@@ -1,0 +1,57 @@
+{
+  "name": "vibeguide",
+  "version": "0.1.0-alpha.2",
+  "description": "Understandable development conversations inside DeepSeek Harness",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "os": [
+    "darwin",
+    "linux"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src",
+    "prompts",
+    "scripts",
+    "evals",
+    "docs",
+    "tests",
+    "tsconfig.json",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "npm run build && node --test tests/*.test.mjs",
+    "check:evals": "node scripts/check-evals.mjs",
+    "prepare:harness": "npm run build && node scripts/install-preset.mjs --home ./artifacts/dsh-home",
+    "smoke:harness": "npm run build && node scripts/smoke-harness.mjs",
+    "smoke:standard": "npm run build && node scripts/smoke-standard.mjs",
+    "smoke:desktop": "npm run build && node scripts/smoke-desktop.mjs",
+    "prepack": "npm run build"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "4.0.1",
+    "@deepseek-ai/dsh-system-prompt": "0.1.0-rc.6",
+    "@types/node": "24.19.2",
+    "typescript": "5.9.3"
+  },
+  "overrides": {
+    "@deepseek-ai/cosmokit": "1.8.2",
+    "@deepseek-ai/schemastery": "3.18.1",
+    "@deepseek-ai/dsh-invariants": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-llm": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-attachment": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-brand": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-timeout": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-scope": "0.1.0-rc.6"
+  }
+}
