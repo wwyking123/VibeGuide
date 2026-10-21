@@ -1,0 +1,12 @@
+{
+  "algorithm": "sha256",
+  "scope": "Only original fixture; hash is not evidence of browser or model quality.",
+  "files": {
+    "README.md": "9964a015c64f82b57ac70eca3a003fa7d419e9ad4132bdd1bc76d7ba4af830b5",
+    "app.mjs": "7824581010f56ae00fd8e5007eff57954aab97a8c33684ec9a7ca524c31f7cc4",
+    "index.html": "73999a910bbcd509042df4df404d7544bcc3848719b0a7818af1d96900de370a",
+    "registration.mjs": "80695e0a37ab7eecda0d3b9fbdbe99e493bf070b133aad13cff4b79172beebba",
+    "server.mjs": "8477670c83c93384f28c1af6ecf692ca4deb6d914454686f5e0ffb4b3c241ca9",
+    "style.css": "18f035cc979598190791c4444f6189f72939452072c3ec205d02833c2cb990c3"
+  }
+}

@@ -1,6 +1,6 @@
 {
   "name": "vibeguide",
-  "version": "0.1.0-alpha.2",
+  "version": "0.2.0-alpha.1",
   "description": "Understandable development conversations inside DeepSeek Harness",
   "private": true,
   "type": "module",
@@ -36,6 +36,8 @@
     "smoke:harness": "npm run build && node scripts/smoke-harness.mjs",
     "smoke:standard": "npm run build && node scripts/smoke-standard.mjs",
     "smoke:desktop": "npm run build && node scripts/smoke-desktop.mjs",
+    "smoke:continuity": "npm run build && node scripts/smoke-continuity.mjs",
+    "check:continuity": "node evals/continuity/verify-fixture.mjs",
     "prepack": "npm run build"
   },
   "devDependencies": {

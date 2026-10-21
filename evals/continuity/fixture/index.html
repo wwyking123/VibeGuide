@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>周末读书会 · 本机报名演示</title>
+    <link rel="stylesheet" href="/style.css">
+  </head>
+  <body>
+    <main>
+      <p class="notice">本机演示：数据只存在当前浏览器，不会发送给真实组织者。请使用虚构姓名和邮箱。</p>
+      <header>
+        <p class="eyebrow">活动报名</p>
+        <h1>周末读书会</h1>
+        <p>带一本最近读过的书，一起聊聊让你印象深刻的故事。</p>
+      </header>
+      <nav aria-label="演示视角">
+        <button id="participant-tab" type="button" aria-pressed="true">参加者页面</button>
+        <button id="organizer-tab" type="button" aria-pressed="false">组织者演示页</button>
+      </nav>
+      <section id="participant-view" aria-labelledby="form-title">
+        <h2 id="form-title">填写报名信息</h2>
+        <p id="capacity-note">当前样例没有人数上限。</p>
+        <form id="registration-form">
+          <label>姓名<input name="name" required maxlength="80" autocomplete="off" placeholder="例如：演示小林"></label>
+          <label>邮箱<input name="email" type="email" required maxlength="160" autocomplete="off" placeholder="例如：lin@example.test"></label>
+          <button type="submit">保存演示报名</button>
+        </form>
+      </section>
+      <section id="organizer-view" aria-labelledby="list-title" hidden>
+        <h2 id="list-title">本机演示名单</h2>
+        <p class="notice">此处只演示名单放在哪个页面，没有真实登录或访问控制。任何使用这个浏览器的人都能切换到此页。</p>
+        <p id="registration-count"></p>
+        <ul id="registration-list"></ul>
+        <details>
+          <summary>演示数据操作</summary>
+          <p>以下按钮会替换这个浏览器里的演示名单。不会改变其他浏览器，也不会删除 AI 的项目记录。</p>
+          <button id="seed-demo" type="button">替换为 19 条虚构报名</button>
+          <button id="clear-demo" type="button">清空本机演示名单</button>
+        </details>
+      </section>
+      <p id="feedback" role="status" aria-live="polite"></p>
+      <footer>不同浏览器或端口的名单互不共享；公开报名、多人并发、权限保护和上线均未实现。</footer>
+    </main>
+    <script type="module" src="/app.mjs"></script>
+  </body>
+</html>

@@ -4,7 +4,7 @@ import type {} from '@deepseek-ai/dsh-system-prompt';
 
 export const name = 'vibeguide';
 export const inject = ['systemPrompt'];
-export const POLICY_VERSION = '2026-10-18.1';
+export const POLICY_VERSION = '2026-10-21.2';
 export const SECTION_NAME = 'vibeguide:communication';
 
 /** Structural port keeps the distributed .d.ts independent of host packages. */

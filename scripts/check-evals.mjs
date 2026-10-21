@@ -3,11 +3,28 @@ import { readFile } from 'node:fs/promises';
 
 const data = JSON.parse(await readFile(new URL('../evals/scenarios.json', import.meta.url), 'utf8'));
 assert.equal(data.schemaVersion, 1);
-assert.equal(data.cases.length, 10, 'Expected the ten specified scenarios');
+assert.ok(Array.isArray(data.cases) && data.cases.length, 'Expected a nonempty scenario collection');
+// Protect the existing coverage while allowing more regression scenarios.
+const requiredIds = [
+  'case-01-scratch-company-site',
+  'case-02-existing-project-tweak',
+  'case-03-colleague-updates-cases',
+  'case-04-preserve-review-requirement',
+  'case-05-external-dependencies',
+  'case-06-missing-critical-requirement',
+  'case-07-tool-failure-permission-denied',
+  'case-08-tests-pass-uncovered-scenarios',
+  'case-09-long-session-goal-pivot',
+  'case-10-user-asks-tech-details',
+  'case-11-vague-thinking-game-clarify-first',
+  'case-12-explicit-new-game-proceed',
+  'case-13-delegated-thinking-game-prototype',
+];
 const ids = new Set();
 for (const item of data.cases) {
   assert.equal(typeof item.id, 'string');
-  assert.ok(item.id && !ids.has(item.id), 'Case IDs must be nonempty and unique');
+  assert.match(item.id, /^case-\d{2,}-[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Case IDs must use the case-NN-description format');
+  assert.ok(!ids.has(item.id), 'Case IDs must be unique');
   ids.add(item.id);
   assert.equal(typeof item.title, 'string');
   assert.ok(item.title.trim());
@@ -23,4 +40,5 @@ for (const item of data.cases) {
     assert.ok(item[key].every(value => typeof value === 'string' && value.trim()));
   }
 }
+for (const id of requiredIds) assert.ok(ids.has(id), `Missing required regression scenario: ${id}`);
 console.log(`Validated ${data.cases.length} scenario records. This is schema validation, not a model-quality evaluation.`);

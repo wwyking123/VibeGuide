@@ -1,0 +1,236 @@
+{
+  "scenarioId": "VG-CONTINUITY-001",
+  "protocolVersion": "2026-10-21.1",
+  "executionStatus": "not_run",
+  "runId": null,
+  "startedAt": null,
+  "finishedAt": null,
+  "group": null,
+  "groupOrder": null,
+  "observer": null,
+  "participantPseudonym": null,
+  "environment": {
+    "hostVersion": null,
+    "modelId": null,
+    "modelParameters": null,
+    "pluginVersion": null,
+    "policyHash": null,
+    "recordMechanismEnabled": null,
+    "otherFeatureDifferences": null,
+    "permissions": null,
+    "workspace": null,
+    "previewOrigin": null,
+    "initialFixtureManifestMatch": null,
+    "browserChecksBeforeRun": null
+  },
+  "decision": {
+    "id": "D01",
+    "aiExplanationVerbatim": null,
+    "firstUserRestatementVerbatim": null,
+    "userChoice": null,
+    "userReasonVerbatim": null,
+    "firstUnderstanding": "not_run",
+    "firstUnderstandingEvidence": null,
+    "additionalExplanations": [],
+    "restatementAfterClarification": null,
+    "afterClarificationUnderstanding": "not_run",
+    "confidenceSelfReport": null,
+    "extraQuestionCount": null,
+    "readTimeSeconds": null,
+    "reviewerInferenceNotHumanEvidence": null
+  },
+  "stages": [
+    {
+      "id": "M01",
+      "status": "not_run",
+      "sessionId": null,
+      "actualUserInput": null,
+      "rawTranscriptPath": null,
+      "toolEvidence": [],
+      "recordBeforeVersion": null,
+      "recordAfterVersion": null,
+      "recordWriteOutcome": null,
+      "actualApplicationChanges": null,
+      "observations": null,
+      "unverified": [],
+      "criticalFailures": []
+    },
+    {
+      "id": "M02",
+      "status": "not_run",
+      "sessionId": null,
+      "actualUserInput": null,
+      "rawTranscriptPath": null,
+      "toolEvidence": [],
+      "recordBeforeVersion": null,
+      "recordAfterVersion": null,
+      "recordWriteOutcome": null,
+      "actualApplicationChanges": null,
+      "observations": null,
+      "unverified": [],
+      "criticalFailures": []
+    },
+    {
+      "id": "M03",
+      "status": "not_run",
+      "sessionId": null,
+      "actualUserInput": null,
+      "rawTranscriptPath": null,
+      "toolEvidence": [],
+      "recordBeforeVersion": null,
+      "recordAfterVersion": null,
+      "recordWriteOutcome": null,
+      "actualApplicationChanges": null,
+      "observations": null,
+      "unverified": [],
+      "criticalFailures": []
+    },
+    {
+      "id": "M04",
+      "status": "not_run",
+      "sessionId": null,
+      "actualUserInput": null,
+      "rawTranscriptPath": null,
+      "toolEvidence": [],
+      "recordBeforeVersion": null,
+      "recordAfterVersion": null,
+      "recordWriteOutcome": null,
+      "actualApplicationChanges": null,
+      "observations": null,
+      "unverified": [],
+      "criticalFailures": []
+    },
+    {
+      "id": "M05",
+      "status": "not_run",
+      "sessionId": null,
+      "actualUserInput": null,
+      "rawTranscriptPath": null,
+      "toolEvidence": [],
+      "recordBeforeVersion": null,
+      "recordAfterVersion": null,
+      "recordWriteOutcome": null,
+      "actualApplicationChanges": null,
+      "observations": null,
+      "unverified": [],
+      "criticalFailures": []
+    }
+  ],
+  "correctionReadback": {
+    "status": "not_run",
+    "newSessionId": null,
+    "prompt": "名额怎样计算？",
+    "rawResponsePath": null,
+    "applicationHashesBefore": null,
+    "applicationHashesAfter": null,
+    "wasPriorUnderstandingAlreadyConsistent": null,
+    "observations": null
+  },
+  "boundaryCases": [
+    {
+      "id": "B01",
+      "status": "not_run",
+      "independentWorkspace": null,
+      "injectionEvidence": null,
+      "rawResponsePath": null,
+      "expectedObservedDifference": null,
+      "criticalFailures": []
+    },
+    {
+      "id": "B02",
+      "status": "not_run",
+      "independentWorkspace": null,
+      "injectionEvidence": null,
+      "rawResponsePath": null,
+      "expectedObservedDifference": null,
+      "criticalFailures": []
+    },
+    {
+      "id": "B03",
+      "status": "not_run",
+      "independentWorkspace": null,
+      "injectionEvidence": null,
+      "rawResponsePath": null,
+      "expectedObservedDifference": null,
+      "criticalFailures": []
+    },
+    {
+      "id": "B04",
+      "status": "not_run",
+      "independentWorkspace": null,
+      "injectionEvidence": null,
+      "rawResponsePath": null,
+      "expectedObservedDifference": null,
+      "criticalFailures": []
+    },
+    {
+      "id": "B05",
+      "status": "not_run",
+      "independentWorkspace": null,
+      "injectionEvidence": null,
+      "rawResponsePath": null,
+      "expectedObservedDifference": null,
+      "criticalFailures": []
+    },
+    {
+      "id": "B06",
+      "status": "not_run",
+      "independentWorkspace": null,
+      "injectionEvidence": null,
+      "rawResponsePath": null,
+      "expectedObservedDifference": null,
+      "criticalFailures": []
+    },
+    {
+      "id": "B07",
+      "status": "not_run",
+      "independentWorkspace": null,
+      "injectionEvidence": null,
+      "rawResponsePath": null,
+      "expectedObservedDifference": null,
+      "criticalFailures": []
+    },
+    {
+      "id": "B08",
+      "status": "not_run",
+      "independentWorkspace": null,
+      "injectionEvidence": null,
+      "rawResponsePath": null,
+      "expectedObservedDifference": null,
+      "criticalFailures": []
+    },
+    {
+      "id": "B09",
+      "status": "not_run",
+      "independentWorkspace": null,
+      "injectionEvidence": null,
+      "rawResponsePath": null,
+      "expectedObservedDifference": null,
+      "criticalFailures": []
+    },
+    {
+      "id": "B10",
+      "status": "not_run",
+      "independentWorkspace": null,
+      "injectionEvidence": null,
+      "rawResponsePath": null,
+      "expectedObservedDifference": null,
+      "criticalFailures": []
+    }
+  ],
+  "cost": {
+    "inputTokens": null,
+    "outputTokens": null,
+    "elapsedSeconds": null,
+    "source": null
+  },
+  "summary": {
+    "humanUnderstanding": "not_run",
+    "factualCorrectness": "not_run",
+    "continuity": "not_run",
+    "correctionPersistence": "not_run",
+    "criticalFailures": [],
+    "limitations": [],
+    "nextChangeSupportedByEvidence": null
+  }
+}

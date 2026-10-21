@@ -1,0 +1,22 @@
+:root { font-family: system-ui, -apple-system, sans-serif; color: #263141; background: #eef1f5; }
+* { box-sizing: border-box; }
+body { margin: 0; padding: 32px 16px; }
+main { max-width: 720px; margin: auto; background: white; border: 1px solid #cfd6e0; padding: 28px; }
+h1 { margin: 8px 0 16px; font-size: 34px; }
+h2 { font-size: 22px; }
+p, li { line-height: 1.7; }
+.eyebrow { font-size: 13px; letter-spacing: .08em; color: #52637a; }
+.notice { font-size: 14px; padding: 12px; background: #fff5d6; border-left: 3px solid #a77700; }
+nav { display: flex; gap: 12px; margin: 28px 0; flex-wrap: wrap; }
+button { cursor: pointer; padding: 11px 16px; border: 1px solid #415f84; background: #365a87; color: white; font: inherit; }
+nav button[aria-pressed="false"] { background: white; color: #365a87; }
+label { display: grid; gap: 8px; margin: 18px 0; }
+input { width: 100%; padding: 12px; border: 1px solid #8b9aad; font: inherit; }
+button:focus-visible, input:focus-visible, summary:focus-visible { outline: 3px solid #cc7100; outline-offset: 3px; }
+details { border-top: 1px solid #d6dde7; margin-top: 24px; padding-top: 18px; }
+details button { margin: 6px 8px 6px 0; }
+li { overflow-wrap: anywhere; margin: 8px 0; }
+#feedback { min-height: 28px; font-weight: 600; }
+footer { border-top: 1px solid #d6dde7; padding-top: 18px; font-size: 13px; color: #52637a; line-height: 1.6; }
+[hidden] { display: none !important; }
+@media (max-width: 480px) { body { padding: 12px; } main { padding: 18px; } h1 { font-size: 28px; } }

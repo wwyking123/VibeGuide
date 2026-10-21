@@ -89,7 +89,10 @@ if (!process.versions.electron) {
       handles.push(handle);
       assemblies.push(await root.systemPrompt.assemble({ scope: scopeOf(handle.agent.ctx), agent: handle.agent }));
     }
-    assert.deepEqual(assemblies[1].tools, assemblies[0].tools);
+    assert.deepEqual(assemblies[1].tools.filter(tool => !tool.name.startsWith('vibeguide_')), assemblies[0].tools);
+    assert.equal(assemblies[1].tools.length, assemblies[0].tools.length + 3);
+    assert.ok(assemblies[1].sections.some(section => section.name === 'vibeguide:continuity'));
+    assert.equal(roster.some(row => row.id === 'vibeguide-p0'), false);
     assert.ok(assemblies[1].tools.some(tool => tool.name === 'ask_user_question'));
     assert.ok(assemblies[1].sections.some(section => section.name === 'vibeguide:communication'));
     assert.equal(assemblies[0].sections.some(section => section.name === 'vibeguide:communication'), false);
@@ -98,6 +101,7 @@ if (!process.versions.electron) {
     console.log(JSON.stringify({
       desktopVersion: host.version, installation: 'passed', originalConfigurationPreserved: true,
       presetDiscovered: true, standardToolsPreserved: assemblies[0].tools.length,
+      projectRecordTools: 3, singleVibeGuideMode: true,
       ordinarySessionIsolated: true, nativeQuestionsPreserved: true, modelCalled: false,
       browserOpenAttempts, userProfileModified: false,
     }, null, 2));

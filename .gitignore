@@ -8,6 +8,7 @@ evals/runs/
 .env.*
 !.env.example
 .dsh/
+.kiro/
 *.log
 *.pem
 *.key

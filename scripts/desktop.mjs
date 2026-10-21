@@ -24,7 +24,8 @@ export async function desktopHost(app = DEFAULT_APP) {
   };
 }
 
-export async function prepareDesktopPlugin(host, directory) {
+export async function prepareDesktopPlugin(host, directory, options = {}) {
+  const presetId = 'vibeguide';
   const packageJson = JSON.parse(await readFile(join(sourceRoot, 'package.json'), 'utf8'));
   const webRoot = dirname(host.resolve('@deepseek-ai/dsh-web-app/package.json'));
   const standardText = await readFile(join(webRoot, 'presets', 'standard.patch.yml'), 'utf8');
@@ -46,15 +47,19 @@ export async function prepareDesktopPlugin(host, directory) {
   }));
   const preset = {
     ...standard,
-    id: 'preset-vibeguide',
+    id: `preset-${presetId}`,
     name: pathToFileURL(host.resolve('@deepseek-ai/dsh-agent-preset')).href,
     config: {
       ...standard.config,
-      id: 'vibeguide', name: 'VibeGuide', order: 2,
-      description: '直接用易懂的语言说明方案、业务选择与实际结果，保留标准开发能力。',
+      id: presetId, name: 'VibeGuide', order: 2,
+      description: '用易懂的话先对齐关键需求，再开发；保存项目要求与纠正，支持换会话续接。',
       plugins: [...hostRows(standard.config.plugins), {
         id: 'vibeguide-communication',
         name: pathToFileURL(join(directory, 'dist', 'index.js')).href,
+      }, {
+        id: 'vibeguide-continuity',
+        name: pathToFileURL(join(directory, 'dist', 'continuity', 'plugin.js')).href,
+        config: { storageRoot: options.storageRoot ?? join(dirname(directory), 'vibeguide-p0-state') },
       }],
     },
   };
@@ -64,8 +69,32 @@ export async function prepareDesktopPlugin(host, directory) {
     version: packageJson.version,
     preset,
     patch: { insert: [{
-      id: 'vibeguide-presets', name: 'cordis:include',
+      id: `${presetId}-presets`, name: 'cordis:include',
       config: { path: join(directory, 'preset.cordis.yml') },
     }] },
   };
+}
+
+/** Upgrade only our two installer-owned includes, preserving all other rows. */
+export function composeDesktopPatch(previous, addition, upgrade = false) {
+  const ids = new Set(['vibeguide-presets', 'vibeguide-p0-presets']);
+  const found = previous.flatMap(row => [row, ...(row.insert ?? [])]).filter(row => ids.has(row.id));
+  if (found.length && !upgrade) throw new Error('VibeGuide 已安装；请使用 --upgrade 更新并合并旧模式。');
+  if (new Set(found.map(row => row.id)).size !== found.length) throw new Error('存在重复的 VibeGuide 声明，未修改。');
+  for (const row of found) if (row.name !== 'cordis:include' || typeof row.config?.path !== 'string') throw new Error('VibeGuide 声明有自定义结构，未修改。');
+  const otherDeclaration = previous.flatMap(row => [row, ...(row.insert ?? [])]).some(row => ['vibeguide', 'vibeguide-p0'].includes(row.config?.id));
+  if (otherDeclaration) throw new Error('存在手动声明的 VibeGuide 预设，未修改。');
+  const next = [];
+  for (const original of previous) {
+    if (ids.has(original.id)) continue;
+    // Preserve custom YAML tag instances (including !!js) in untouched values.
+    const row = { ...original };
+    if (Array.isArray(row.insert)) {
+      row.insert = row.insert.filter(item => !ids.has(item.id));
+      if (!row.insert.length) delete row.insert;
+    }
+    if (row.id === 'agent-preset-registry' && row.config?.default === 'vibeguide-p0') row.config = { ...row.config, default: 'vibeguide' };
+    if (Object.keys(row).length) next.push(row);
+  }
+  return [...next, addition];
 }
