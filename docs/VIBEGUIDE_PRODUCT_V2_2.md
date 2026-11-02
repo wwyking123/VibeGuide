@@ -18,6 +18,8 @@ Make technical systems legible to non-technical people.
 
 **第 11 组 · 课程项目目标版本 · 2026 年 10 月 27 日**
 
+**2026-11-02 补充决定：** 侧栏精简、修改统一在主对话提出、一键代发改法、取消逐步试用验收，见[侧栏精简与修改转交方式调整](reviews/2026-11-02-sidebar-simplification.md)。与本文冲突处以该记录为准。
+
 本版依据用户确认的产品方向、[技术设计 v2.2](VIBEGUIDE_TECHNICAL_DESIGN_V2_2.md)及第二轮审查后认可的六项改进，作为当前产品设计基线。完整范围见第 11 章，开发顺序不改变三类场景的交付范围。产品文档说明用户体验与验收，技术文档说明实现方式；两者共同维护，不保留互相冲突的开发目标。
 
 本文描述目标行为，不表示所列能力已实现或已在 DeepSeek Harness 中验证。[产品 v2.1](VIBEGUIDE_PRODUCT_V2_1.md)、[早期产品设计](PRODUCT_DESIGN.md)、既有 PDF 与 HTML 原型保留为历史参考；不以它们的旧行为覆盖本版，也不把文档修订当作代码已交付。
