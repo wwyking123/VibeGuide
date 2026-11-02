@@ -29,7 +29,8 @@ test('installation preserves base composition/assets and ships a standalone loca
     for (const file of await readdir(join(pluginRoot, 'dist'), { recursive: true })) {
       if (!/\.(?:js|mjs|cjs|d\.ts)$/.test(file)) continue;
       const text = await readFile(join(pluginRoot, 'dist', file), 'utf8');
-      assert.ok(!text.includes('@deepseek-ai/'), `${file} must not import a second host instance or require external types`);
+      assert.ok(!/\b(?:from\s*|import\s*(?:\(\s*)?|require\(\s*)['"]@deepseek-ai\//.test(text),
+        `${file} must not import a second host instance or require external types`);
     }
     assert.equal((await stat(result.destination)).mode & 0o777, 0o700);
     assert.equal((await stat(join(pluginRoot, 'package.json'))).mode & 0o777, 0o600);

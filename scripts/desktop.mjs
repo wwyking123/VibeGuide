@@ -2,8 +2,9 @@ import { createRequire } from 'node:module';
 import { readFile, cp, mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { assertDesktopVersion, SUPPORTED_DESKTOP_VERSIONS } from '../dist/guide/host/compatibility.js';
 
-export const DESKTOP_VERSION = '0.2.1-rc.2';
+export const DESKTOP_VERSION = SUPPORTED_DESKTOP_VERSIONS.at(-1);
 export const DEFAULT_APP = '/Applications/DeepSeek Harness.app';
 export const sourceRoot = fileURLToPath(new URL('..', import.meta.url));
 
@@ -13,7 +14,7 @@ export async function desktopHost(app = DEFAULT_APP) {
   const require = createRequire(join(runtime, 'package.json'));
   const anchor = require.resolve('@deepseek-ai/dsh/package.json');
   const pkg = JSON.parse(await readFile(anchor, 'utf8'));
-  if (pkg.version !== DESKTOP_VERSION) throw new Error(`桌面版适配仅验证 ${DESKTOP_VERSION}，实际为 ${pkg.version}。`);
+  assertDesktopVersion(pkg.version);
   const load = name => import(pathToFileURL(require.resolve(name)).href);
   const { entryListSchema } = await load('@deepseek-ai/cordis-plugin-include');
   const yaml = require('js-yaml');
@@ -37,6 +38,13 @@ export async function prepareDesktopPlugin(host, directory, options = {}) {
   }
   await writeFile(join(directory, 'package.json'), JSON.stringify({
     name: 'vibeguide', version: packageJson.version, private: true, type: 'module',
+    ...(options.guide ? {
+      exports: { '.': './dist/guide/plugin.js', './client': './dist/client.js', './package.json': './package.json' },
+      dsh: { client: { platform: 'web', immediately: true, inject: [
+        '@deepseek-ai/dsh-client-ui-sidebar-right', '@deepseek-ai/dsh-client-ui-conversation',
+        '@deepseek-ai/dsh-client-ui-slots', '@deepseek-ai/dsh-connection',
+      ] } },
+    } : {}),
   }, null, 2) + '\n', { mode: 0o600 });
   // Includes outside the profile do not inherit its package lookup fallback.
   // Use this desktop's exact modules, including every nested preset row.
@@ -52,18 +60,21 @@ export async function prepareDesktopPlugin(host, directory, options = {}) {
     config: {
       ...standard.config,
       id: presetId, name: 'VibeGuide', order: 2,
-      description: '用易懂的话先对齐关键需求，再开发；保存项目要求与纠正，支持换会话续接。',
+      description: options.guide ? '用易懂的话沟通开发；在 VibeGuide 侧栏按需看懂进展与选择。' : '用易懂的话先对齐关键需求，再开发；保存项目要求与纠正，支持换会话续接。',
       plugins: [...hostRows(standard.config.plugins), {
         id: 'vibeguide-communication',
         name: pathToFileURL(join(directory, 'dist', 'index.js')).href,
-      }, {
+      }, ...(options.guide ? [] : [{
         id: 'vibeguide-continuity',
         name: pathToFileURL(join(directory, 'dist', 'continuity', 'plugin.js')).href,
         config: { storageRoot: options.storageRoot ?? join(dirname(directory), 'vibeguide-p0-state') },
-      }],
+      }])],
     },
   };
-  const composition = host.dump([preset]);
+  const composition = host.dump([...(options.guide ? [{
+    id: 'vibeguide-guide', name: pathToFileURL(join(directory, 'dist', 'guide', 'plugin.js')).href,
+    config: { runtimeAnchor: host.anchor, storageRoot: options.storageRoot ?? join(dirname(directory), 'vibeguide-v2-state') },
+  }] : []), preset]);
   await writeFile(join(directory, 'preset.cordis.yml'), composition, { mode: 0o600 });
   return {
     version: packageJson.version,
