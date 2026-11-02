@@ -78,7 +78,7 @@ export function ProjectPanels({ tab, snapshot, answers, rpc, onFocus, onChanged,
         <button className="vg-primary" disabled={!!busy || !modelReady} onClick={() => void run('overview', {})}>生成项目概览</button></div>}
       {overview && <>
         <p className="vg-summary">{overview.summary}</p>
-        {overview.historical && <p className="vg-sub">项目文件有变化。<button className="vg-link" disabled={!!busy || !modelReady} onClick={() => void run('overview', {})}>更新概览</button></p>}
+        {(overview.historical || !overview.nodes.some(row => row.layer)) && <p className="vg-sub">{overview.historical ? '项目文件有变化。' : '这是旧版概览，还没有分层和完成程度。'}<button className="vg-link" disabled={!!busy || !modelReady} onClick={() => void run('overview', {})}>{overview.historical ? '更新概览' : '按新方式整理'}</button></p>}
         <Layers overview={overview} selected={selected} goalNodes={goalNodes} onSelect={focusNode}/>
         {goal && <p className="vg-sub">蓝色是和“{goal.question}”可能相关的部分。</p>}
         {node && <div className="vg-detail">
@@ -94,6 +94,7 @@ export function ProjectPanels({ tab, snapshot, answers, rpc, onFocus, onChanged,
 }
 
 const LAYERS: Array<[Layer, string, string]> = [['page', '用户看到的', ''], ['logic', '背后的规则', '用到'], ['data', '数据存在哪里', '保存在'], ['external', '外部服务', '连接'], ['other', '其他部分', '']];
+const DEV: Layer = 'dev';
 const MATURITY = { works: ['能用', 'ok'], mock: ['模拟', 'warn'] } as const;
 
 /** Parts grouped from what people see down to where data lives, each with an AI-inferred maturity. */
@@ -102,22 +103,25 @@ function Layers({ overview, selected, goalNodes, onSelect }: { overview: NonNull
     nodes: overview.nodes.filter(node => (node.layer ?? 'other') === layer), missing: (overview.missing ?? []).filter(row => row.layer === layer) }))
     .filter(group => group.nodes.length || group.missing.length);
   const rated = overview.nodes.some(node => node.maturity) || !!overview.missing?.length;
+  const dev = overview.nodes.filter(node => node.layer === DEV);
+  const part = (node: typeof overview.nodes[number]) => {
+    const key = `${overview.id}:${node.id}`, changed = overview.changedNodes.includes(node.id), maturity = node.maturity && MATURITY[node.maturity];
+    return <button key={node.id} className={`vg-part${goalNodes.has(node.id) ? ' vg-part-goal' : ''}`} aria-pressed={key === selected} onClick={() => onSelect(node.id)}>
+      <span className="vg-part-main"><span className="vg-part-title">{node.title}{changed && <span className="vg-changed"> · 刚改过</span>}</span><span className="vg-part-sub">{node.purpose}</span></span>
+      {maturity && <span className={`vg-tag vg-tag-${maturity[1]}`}>{maturity[1] === 'ok' ? '●' : '◐'} {maturity[0]}</span>}
+    </button>;
+  };
   return <div className="vg-layers">
     {groups.map((group, index) => <div key={group.layer}>
       {index > 0 && <div className="vg-link-down">↓{group.link && ` ${group.link}`}</div>}
       <div className="vg-label">{group.label}</div>
-      {group.nodes.map(node => {
-        const key = `${overview.id}:${node.id}`, changed = overview.changedNodes.includes(node.id), maturity = node.maturity && MATURITY[node.maturity];
-        return <button key={node.id} className={`vg-part${goalNodes.has(node.id) ? ' vg-part-goal' : ''}`} aria-pressed={key === selected} onClick={() => onSelect(node.id)}>
-          <span className="vg-part-main"><span className="vg-part-title">{node.title}{changed && <span className="vg-changed"> · 刚改过</span>}</span><span className="vg-part-sub">{node.purpose}</span></span>
-          {maturity && <span className={`vg-tag vg-tag-${maturity[1]}`}>{maturity[1] === 'ok' ? '●' : '◐'} {maturity[0]}</span>}
-        </button>;
-      })}
+      {group.nodes.map(part)}
       {group.missing.map((row, i) => <div key={i} className="vg-part vg-part-missing">
         <span className="vg-part-main"><span className="vg-part-title">{row.title}</span>{row.purpose && <span className="vg-part-sub">{row.purpose}</span>}</span>
         <span className="vg-tag">○ 还没做</span>
       </div>)}
     </div>)}
+    {!!dev.length && <details className="vg-more vg-dev"><summary>开发用的资料 · {dev.length} 项（文档、设计稿、测试等，用户用不到）</summary>{dev.map(part)}</details>}
     {rated && <p className="vg-legend">● 能用　◐ 模拟或示意　○ 还没做　· 由 AI 根据代码推测</p>}
   </div>;
 }

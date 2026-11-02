@@ -49,7 +49,7 @@ test('opening project/history is read-only; explicit overview is cached with lit
   const overview = await f.project.overview(f.req('overview-1'), signal());
   assert.equal(overview.nodes.length, 2); assert.equal(overview.edges.length, 1);
   const page = overview.nodes.find(node => node.title === '回答页面'), save = overview.nodes.find(node => node.title === '回答保存');
-  assert.equal(page.layer, 'page'); assert.equal(page.maturity, 'works'); assert.equal(save.layer, 'other', 'unknown layers fall back to other'); assert.equal(save.maturity, 'mock');
+  assert.equal(page.layer, 'page'); assert.equal(page.maturity, 'works'); assert.doesNotMatch(page.purpose, /^(可能|推测)/, 'descriptions state the role without hedging'); assert.equal(save.layer, 'other', 'unknown layers fall back to other'); assert.equal(save.maturity, 'mock');
   assert.deepEqual(overview.missing, [{ title: '账号登录', purpose: '换设备继续看需要识别同一个人', layer: 'external' }]);
   assert.equal((await f.project.overview(f.req('overview-2'), signal())).id, overview.id);
   await f.project.view(f.base, signal()); assert.equal(f.calls(), 1); assert.equal(f.sends(), 0);

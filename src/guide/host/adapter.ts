@@ -187,8 +187,9 @@ export class HarnessAdapter {
 
   async structured(snapshot: GuideSnapshot, task: 'overview' | 'trial' | 'goal' | 'changes' | 'trouble', source: unknown, signal: AbortSignal): Promise<string> {
     const schema = task === 'overview'
-      ? '返回 JSON {"summary":"这个项目为谁解决什么问题，150字以内","nodes":[{"title":"用户能理解的职责名称，10字以内","layer":"page|logic|data|external","purpose":"一句话说它做什么，20字以内","impact":"对使用的影响与局限","maturity":"works|mock","maturityReason":"判断依据，一句话","files":["提供的摘录路径"]}],"missing":[{"title":"还没做的部分","layer":"page|logic|data|external","purpose":"为什么需要，一句话"}],"unknowns":["还不能确认的部分"]}。'
-        + 'layer：page=用户直接看到和操作的页面；logic=背后的处理和规则；data=数据保存在哪里；external=登录、支付、地图等外部服务。'
+      ? '返回 JSON {"summary":"这个项目为谁解决什么问题，150字以内","nodes":[{"title":"用户能理解的职责名称，10字以内","layer":"page|logic|data|external|dev","purpose":"一句话直接说它做什么，20字以内，不要用“可能”开头","impact":"对使用的影响与局限","maturity":"works|mock","maturityReason":"判断依据，一句话","files":["提供的摘录路径"]}],"missing":[{"title":"还没做的部分","layer":"page|logic|data|external","purpose":"为什么需要，一句话"}],"unknowns":["还不能确认的部分"]}。'
+        + 'layer：page=用户直接看到和操作的页面；logic=背后的处理和规则；data=数据保存在哪里；external=登录、支付、地图等外部服务；dev=只给开发用、用户用不到的资料，如需求文档、说明文档、设计稿、测试和截图脚本、启动脚本。产品本身的部分优先放前四层。'
+        + 'purpose 和 impact 用肯定句直接描述作用；不确定的地方写进 maturityReason 或 unknowns，不要在描述里写“可能”。'
         + 'maturity：works=摘录显示真的实现了；mock=看起来有但用的是写死的数据、模拟对象、占位或只在界面上示意。拿不准就写 mock 并说明。'
         + '节点1到8个，每个至少一个来源文件。只使用实际提供摘录的路径；每个文件只能分配给一个节点。missing最多4项，只列 requirements 或项目目标明确需要、但摘录中看不到实现的部分，不要凭空扩展需求。'
         + '职责和成熟度都是推测，不是功能验收。文档中的愿望不能当作已实现。不要生成关系线。'

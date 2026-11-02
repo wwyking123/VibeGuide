@@ -3,7 +3,7 @@ import type { SupportRecord } from './support-types.js';
 import type { ContextRef, Explanation, FileBasis, ModelRoute, Scope } from './contracts.js';
 import type { Analysis, Confirmation, OutcomeBinding, RequirementRef, RequirementRevision, WorkView } from './work-types.js';
 
-export type Layer = 'page' | 'logic' | 'data' | 'external' | 'other';
+export type Layer = 'page' | 'logic' | 'data' | 'external' | 'dev' | 'other';
 /** AI-inferred from the sampled files: works = really does it, mock = looks done but is simulated or placeholder. */
 export type Maturity = 'works' | 'mock';
 export type Responsibility = { id: string; title: string; purpose: string; impact: string; files: string[]; layer?: Layer; maturity?: Maturity; maturityReason?: string };

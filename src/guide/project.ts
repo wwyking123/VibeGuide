@@ -12,7 +12,9 @@ import { redact } from './privacy.js';
 import { WorkService, requirementBasis } from './work.js';
 import type { GuideStore } from './store.js';
 import type { Annotation, HistoryItem, HistoryPage, Layer, MissingPart, Overview, ProjectView, Responsibility } from './project-types.js';
-const layerOf = (value: unknown): Layer => ['page', 'logic', 'data', 'external'].includes(value as string) ? value as Layer : 'other';
+const layerOf = (value: unknown): Layer => ['page', 'logic', 'data', 'external', 'dev'].includes(value as string) ? value as Layer : 'other';
+/** Uncertainty belongs to maturity and unknowns; a part's description states what it is for. */
+const plain = (value: string) => value.replace(/^(?:可能|或许|大概|推测)(?:是|会)?(?=\S)/, '');
 
 const now = () => new Date().toISOString();
 const sameProject = (a: GuideSnapshot, b: GuideSnapshot) => a.scope.projectId === b.scope.projectId && a.scope.sessionId === b.scope.sessionId && b.enabled;
@@ -133,7 +135,7 @@ export class ProjectService {
       const record = await this.store.readProject(snapshot.scope.projectId), requestDigest = hash(value);
       const prior = record.overviews.find(row => row.requestId === value.clientRequestId);
       if (prior) { if (prior.requestDigest !== requestDigest) throw new GuideError('request_conflict', '这次请求的内容已变化。'); return prior; }
-      const cacheKey = hash({ files: evidence.basis.digest, samples: evidence.snippets, model: snapshot.model.route, preferences: snapshot.preferenceVersion, prompt: 'overview-2' });
+      const cacheKey = hash({ files: evidence.basis.digest, samples: evidence.snippets, model: snapshot.model.route, preferences: snapshot.preferenceVersion, prompt: 'overview-3' });
       const cached = record.overviews.find(row => row.cacheKey === cacheKey);
       if (cached) { await this.verify(snapshot, abort); await this.support.hit(snapshot, String(value.clientRequestId), 'cache'); return cached; }
       const goals = (await this.work.requirements.list(snapshot.scope)).items.filter(row => row.state === 'active').slice(-8).map(row => redact(row.text).slice(0, 500));
@@ -146,7 +148,7 @@ export class ProjectService {
       const nodes: Responsibility[] = parsed.nodes.map((node: any, index) => {
         if (!node || !Array.isArray(node.files) || !node.files.length || node.files.some((file: unknown) => typeof file !== 'string' || !allowed.has(file) || assigned.has(file))) invalid();
         node.files.forEach((file: string) => assigned.add(file));
-        return { id: `n${index + 1}`, title: generatedText(node.title, 50), purpose: generatedText(node.purpose, 500), impact: generatedText(node.impact, 500), files: [...new Set<string>(node.files)],
+        return { id: `n${index + 1}`, title: generatedText(node.title, 50), purpose: plain(generatedText(node.purpose, 500)), impact: plain(generatedText(node.impact, 500)), files: [...new Set<string>(node.files)],
           layer: layerOf(node.layer), ...(node.maturity === 'works' || node.maturity === 'mock' ? { maturity: node.maturity, maturityReason: typeof node.maturityReason === 'string' && node.maturityReason.trim() ? generatedText(node.maturityReason, 300) : undefined } : {}) };
       });
       const missing: MissingPart[] = (Array.isArray(parsed.missing) ? parsed.missing : []).slice(0, 4).filter((row: any) => row && typeof row.title === 'string' && row.title.trim())
