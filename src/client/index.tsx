@@ -15,6 +15,25 @@ function GuideIcon() {
   return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 5c3-1 5-1 8 1 3-2 5-2 8-1v14c-3-1-5-1-8 1-3-2-5-2-8-1V5Zm8 1v14" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round"/></svg>;
 }
 
+function RefreshIcon() {
+  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/></svg>;
+}
+
+/** One line of what is true now: a coloured dot, the most important fact, then the rest in grey. */
+function Status({ progress }: { progress: NonNullable<GuideSnapshot['progress']> }) {
+  const active = ['reading', 'editing', 'checking', 'working'].includes(progress.activity);
+  const activity = { reading: '正在查看项目', editing: '正在修改', checking: '正在检查', working: 'AI 正在处理', waiting: '等你在主对话选择', idle: 'AI 已停下', unknown: '状态待确认' }[progress.activity];
+  const check = progress.latestCheck && { pending: '', succeeded: '上次检查通过', failed: '上次检查没通过', unknown: '上次检查结果未知' }[progress.latestCheck.outcome];
+  const headline = active || progress.activity === 'waiting' || !check ? activity : check;
+  const tone = active || progress.activity === 'waiting' ? 'active' : progress.latestCheck?.outcome === 'failed' ? 'warn' : progress.latestCheck?.outcome === 'succeeded' ? 'ok' : 'idle';
+  const rest = [headline === activity ? check : activity, progress.latestCheck?.applicability === 'changed' ? '检查之后又改过' : '', progress.changedFiles ? `改了 ${progress.changedFiles} 个文件` : ''].filter(Boolean);
+  return <div className="vg-status" aria-label="当前进展">
+    <div className="vg-status-line"><span className={`vg-dot vg-dot-${tone}`}/><h3>{headline}</h3></div>
+    {!!rest.length && <p className="vg-sub">{rest.join(' · ')}</p>}
+    {progress.notice && <p className="vg-notice">{progress.notice}</p>}
+  </div>;
+}
+
 function GearIcon() {
   return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.6"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg>;
 }
@@ -178,34 +197,29 @@ export function GuidePanel({ sessionId, rpc }: { sessionId: string; rpc: Rpc }) 
   return <section ref={panel} className="vg-panel" aria-label="VibeGuide 理解助手" data-testid="vibeguide-panel">
     <style>{styles}</style>
     <div className="vg-content">
-    <div className="vg-row"><strong>{snapshot?.projectName ?? '当前项目'}</strong><div className="vg-tools"><button onClick={() => void refresh(true)} disabled={refreshing}>{refreshing ? '读取中…' : '刷新进展'}</button>
-      {snapshot && <button className="vg-gear" aria-label="设置" title="设置" aria-pressed={tab === 'settings'} onClick={() => setTab(tab === 'settings' ? 'progress' : 'settings')}><GearIcon/></button>}</div></div>
-    {snapshot && <nav className="vg-tabs" aria-label="侧栏内容">{(['progress', 'structure'] as const).map(item => <button key={item} aria-pressed={tab === item} onClick={() => setTab(item)}>{{ progress: '当前进展', structure: '项目结构' }[item]}</button>)}</nav>}
+    <div className="vg-top"><strong>{snapshot?.projectName ?? '当前项目'}</strong><div className="vg-tools">
+      <button className="vg-icon" aria-label="刷新进展" title="刷新进展" onClick={() => void refresh(true)} disabled={refreshing}><RefreshIcon/></button>
+      {snapshot && <button className="vg-icon" aria-label="设置" title="设置" aria-pressed={tab === 'settings'} onClick={() => setTab(tab === 'settings' ? 'progress' : 'settings')}><GearIcon/></button>}</div></div>
+    {snapshot && <nav className="vg-tabs" aria-label="侧栏内容">{(['progress', 'structure'] as const).map(item => <button key={item} aria-pressed={tab === item} onClick={() => setTab(item)}>{{ progress: '进展', structure: '项目结构' }[item]}</button>)}{tab === 'settings' && <span className="vg-tab-note">设置</span>}</nav>}
     {readError && <p role="alert" className="vg-notice">{readError}</p>}
     {error && <p role="alert" className="vg-notice">{error}</p>}
     {!snapshot && !error && !readError && <p role="status">正在读取当前会话…</p>}
     {snapshot && <>
       <div hidden={tab !== 'progress'}>
-      {snapshot.progress && <article className="vg-card vg-status" aria-label="当前进展">
-        <h3>{{ reading: '正在查看项目', editing: '正在修改', checking: '正在检查', working: 'AI 正在处理',
-          waiting: '等你在主对话选择', idle: 'AI 已停下', unknown: '状态待确认' }[snapshot.progress.activity]}{snapshot.progress.latestCheck
-          && { pending: '', succeeded: '，上次检查通过', failed: '，上次检查没通过', unknown: '，上次检查结果未知' }[snapshot.progress.latestCheck.outcome]}{snapshot.progress.latestCheck?.applicability === 'changed' ? '（之后又改过）' : ''}</h3>
-        {snapshot.progress.changedFiles > 0 && <p className="vg-muted">改了 {snapshot.progress.changedFiles} 个文件</p>}
-        {snapshot.progress.notice && <p className="vg-notice">{snapshot.progress.notice}</p>}
-      </article>}
-      {!snapshot.observations.length && <p className="vg-card">先在主对话说说你想做什么。有了对话内容，就可以在这里追问它的影响。</p>}
+      {snapshot.progress && <Status progress={snapshot.progress}/>}
+      {!snapshot.observations.length && <p className="vg-sub">先在主对话说说你想做什么，之后可以在这里问它的影响。</p>}
       {snapshot.choices.map(choice => <article className="vg-card vg-choice" key={choice.id}>
         <small>主对话正在等你选择</small><h3>{choice.question}</h3>
         <ul>{choice.options.map(option => <li key={option.id}><strong>{option.label}</strong>{option.description && <span>：{option.description}</span>}</li>)}</ul>
         <button disabled={busy} onClick={() => void ask('请解释这道题各个选项对使用体验的影响，并说明取舍，不要替我选择。', choice)}>帮我看懂这些选项</button>
         <p className="vg-muted">选好后，请回左侧主对话的原问题作答。</p>
       </article>)}
-      {snapshot.inputs?.filter(input => input.kind === 'redirect' || input.state === 'failed' && (input.kind === 'explain' || !!input.handoff)).slice(-3).map(input => <article key={input.id} className="vg-card">
-        <h3>{input.statement}</h3>
-        <p>{input.message ?? '这次没有完成。'}</p>
+      {snapshot.inputs?.filter(input => input.kind === 'redirect' || input.state === 'failed' && (input.kind === 'explain' || !!input.handoff)).slice(-3).map(input => <article key={input.id} className="vg-receipt">
+        <div className="vg-receipt-state">{input.statement}</div>
+        <p className="vg-sub">{input.message ?? '这次没有完成。'}</p>
       </article>)}
-      {snapshot.deliveries?.filter((delivery, i, rows) => delivery.state !== 'accepted' || rows.slice(i + 1).every(row => row.state !== 'accepted')).map(delivery => <article key={delivery.id} className="vg-card" aria-label="修改转交回执">
-        <h3>{{ pending: '准备发送', dispatching: '正在发送', queued: '已发到主对话，排队中', accepted: '已发到主对话', unknown: '发送结果待核对', failed: '没有发送成功' }[delivery.state]}</h3>
+      {snapshot.deliveries?.filter((delivery, i, rows) => delivery.state !== 'accepted' || rows.slice(i + 1).every(row => row.state !== 'accepted')).map(delivery => <article key={delivery.id} className="vg-receipt" aria-label="修改转交回执">
+        <div className={`vg-receipt-state vg-receipt-${delivery.state}`}>{{ pending: '准备发送', dispatching: '正在发送', queued: '已发到主对话，排队中', accepted: '已发到主对话', unknown: '发送结果待核对', failed: '没有发送成功' }[delivery.state]}</div>
         <p className="vg-text">{delivery.userStatement}</p>
         {delivery.clarificationStatements.map((statement, i) => <p className="vg-text" key={i}>补充 {i + 1}：{statement}</p>)}
         {!!delivery.background?.length && <details className="vg-attached"><summary>同时带上了 {delivery.background.length} 条之前的约定</summary>{delivery.background.map(row => <p className="vg-text" key={row.id}>{row.text}</p>)}</details>}
@@ -251,7 +265,38 @@ export function apply(ctx: any) {
 }
 
 const styles = `
-.vg-panel{font:13px/1.65 system-ui,sans-serif;color:var(--dsw-alias-label-primary,#263b35);display:flex;flex-direction:column;overflow:hidden;height:100%;min-height:0;box-sizing:border-box;min-width:0}
-.vg-content{flex:1;min-height:0;overflow:auto;padding:20px 16px;overflow-wrap:anywhere}.vg-composer{flex-shrink:0;padding:12px 16px 16px;border-top:1px solid #78918530}.vg-composer .vg-section-label{display:block;margin:0 0 8px}.vg-panel .vg-composer textarea{max-height:160px;min-height:38px;margin:0;resize:none;transition:min-height .15s}.vg-panel .vg-composer textarea:focus,.vg-panel .vg-composer textarea.vg-filled{min-height:84px}.vg-input{display:flex;gap:8px;align-items:flex-end}.vg-input button{flex-shrink:0}.vg-composer{padding:10px 16px 12px}
-.vg-badge{flex-shrink:0;font-size:11px;padding:2px 8px;border-radius:10px;white-space:nowrap}.vg-badge-doing{background:#c6a25c22;color:#8c7040}.vg-badge-try{background:#5c8ec622;color:#3d6390}.vg-badge-done{background:#36695222;color:#366952}.vg-row h3{margin:0}.vg-suggestion{border-top:1px solid #78918530;margin-top:10px;padding-top:6px}.vg-tools{display:flex;gap:6px;align-items:center}.vg-panel .vg-gear{display:flex;padding:5px 7px}.vg-panel .vg-gear[aria-pressed=true]{background:#366952;color:white;border-color:#366952}.vg-tabs{display:flex;gap:4px;margin:14px 0}.vg-tabs button{flex:1}.vg-panel .vg-tabs button[aria-pressed=true]{background:#366952;color:white}.vg-graph-scroll{overflow:auto;border:1px solid #78918530;border-radius:10px;margin:12px 0}.vg-graph-scroll svg{display:block}.vg-graph-scroll g[role=button]{cursor:pointer}.vg-graph-scroll g:focus{outline:2px solid #366952}.vg-node-list,.vg-actions{display:flex;gap:7px;flex-wrap:wrap;margin:12px 0}.vg-node-list button[aria-pressed=true]{border-color:#366952;background:#8eb89c30}.vg-panel input[type=checkbox]{display:inline-block;width:auto;margin-right:8px}.vg-attached{border-left:2px solid #789185;padding-left:10px;margin:10px 0}.vg-panel fieldset{border:1px solid #78918555;border-radius:8px;margin:10px 0;min-width:0}.vg-panel fieldset label{display:block;margin:7px 0;overflow-wrap:anywhere}.vg-panel select{display:block;width:100%;max-width:100%;background:var(--background,#fff);color:#263b35;border:1px solid #78918555;border-radius:6px;padding:8px;font:inherit;margin:6px 0 12px}.vg-panel label{overflow-wrap:anywhere}.vg-panel input{display:block;width:100%;background:transparent;color:inherit;border:1px solid #78918555;border-radius:6px;padding:8px;font:inherit}.vg-panel *{box-sizing:border-box}.vg-heading,.vg-row{display:flex;align-items:center;justify-content:space-between;gap:10px}.vg-heading small{letter-spacing:.15em;color:#5d7d6f;font-size:10px}.vg-panel h2{font-size:18px;line-height:1.4;margin:3px 0}.vg-panel h3{font-size:13px;margin:5px 0 8px}.vg-muted{color:#78857e;font-size:12px}.vg-panel p{margin:10px 0}.vg-section-label{font-size:12px;font-weight:600;color:#688576;margin:23px 0 9px}.vg-card{padding:13px;border:1px solid #78918530;border-radius:10px;margin:10px 0;background:#8eb89c08}.vg-card summary{cursor:pointer;font-weight:600}.vg-excerpt{display:block;font-weight:400;font-size:12px;opacity:.8;margin-top:7px}.vg-text{white-space:pre-wrap;overflow-wrap:anywhere}.vg-choice{border-left:3px solid #6a8b78}.vg-panel ul{padding-left:20px}.vg-panel li{margin:8px 0}.vg-panel button{cursor:pointer;border:1px solid #78918555;border-radius:7px;background:transparent;color:inherit;font:inherit;font-size:12px;padding:5px 10px}.vg-panel button:hover{background:#8eb89c20}.vg-panel button:disabled{opacity:.5;cursor:default}.vg-panel .vg-primary{background:#366952;color:white;border-color:#366952}.vg-panel textarea{font:inherit;line-height:1.6;background:transparent;color:inherit;border:1px solid #78918566;border-radius:9px;padding:11px;width:100%;resize:vertical;min-height:80px;margin-bottom:7px}.vg-panel textarea:focus{outline:2px solid #6a9d83;outline-offset:2px}.vg-notice{padding:9px 11px;border-radius:7px;background:#c6a25c18;color:#8c7040;font-size:12px}.vg-answer{background:#8eb89c10}.vg-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+.vg-panel{--vg-text:var(--dsw-alias-label-primary,#1f1e1d);--vg-sub:#6b6a66;--vg-faint:#9a9893;--vg-line:rgba(20,20,19,.09);--vg-line-strong:rgba(20,20,19,.18);--vg-soft:rgba(20,20,19,.035);--vg-hover:rgba(20,20,19,.06);--vg-accent:#2563c9;--vg-ok:#2f8a57;--vg-warn:#b26b12;--vg-blue-bg:#e8f0fb;--vg-blue:#1d4f9c;--vg-violet-bg:#eeecfb;--vg-violet:#43389e;--vg-amber-bg:#fbf1df;--vg-amber:#7a4b0c}
+@media (prefers-color-scheme:dark){.vg-panel{--vg-text:var(--dsw-alias-label-primary,#ecebe7);--vg-sub:#a9a7a0;--vg-faint:#7d7b75;--vg-line:rgba(255,255,255,.1);--vg-line-strong:rgba(255,255,255,.2);--vg-soft:rgba(255,255,255,.05);--vg-hover:rgba(255,255,255,.08);--vg-accent:#7aa7ef;--vg-ok:#6cc38f;--vg-warn:#e0a54f;--vg-blue-bg:#1d2f4a;--vg-blue:#b5cdf2;--vg-violet-bg:#2a2650;--vg-violet:#cbc6f4;--vg-amber-bg:#3a2a10;--vg-amber:#f0c98a}}
+.vg-panel{font:13px/1.6 system-ui,-apple-system,"PingFang SC",sans-serif;color:var(--vg-text);display:flex;flex-direction:column;overflow:hidden;height:100%;min-height:0;box-sizing:border-box;min-width:0}
+.vg-panel *{box-sizing:border-box}.vg-content{flex:1;min-height:0;overflow:auto;padding:16px 16px 20px;overflow-wrap:anywhere}
+.vg-panel h3{font-size:13px;font-weight:600;margin:0}.vg-panel p{margin:6px 0}.vg-panel ul{padding-left:18px;margin:6px 0}.vg-panel li{margin:4px 0}
+.vg-top,.vg-row{display:flex;align-items:center;justify-content:space-between;gap:10px}.vg-top strong{font-size:14px;font-weight:600}.vg-tools{display:flex;gap:2px}
+.vg-panel button{cursor:pointer;border:1px solid var(--vg-line-strong);border-radius:7px;background:transparent;color:inherit;font:inherit;font-size:12px;padding:4px 10px}.vg-panel button:hover{background:var(--vg-hover)}.vg-panel button:disabled{opacity:.45;cursor:default}
+.vg-panel .vg-icon{border:0;padding:5px;display:flex;color:var(--vg-sub);border-radius:6px}.vg-panel .vg-icon[aria-pressed=true]{color:var(--vg-text);background:var(--vg-hover)}
+.vg-panel .vg-link{border:0;padding:0;color:var(--vg-accent);background:none;font-size:12px}.vg-panel .vg-link:hover{background:none;text-decoration:underline}
+.vg-panel .vg-primary{background:var(--vg-text);color:var(--dsw-alias-background-primary,#fff);border-color:var(--vg-text)}.vg-panel .vg-primary:hover{background:var(--vg-text);opacity:.88}
+.vg-tabs{display:flex;gap:18px;border-bottom:1px solid var(--vg-line);margin:12px 0 14px;align-items:flex-end}.vg-panel .vg-tabs button{border:0;border-radius:0;padding:0 0 8px;font-size:13px;color:var(--vg-sub);margin-bottom:-1px;border-bottom:2px solid transparent}.vg-panel .vg-tabs button:hover{background:none;color:var(--vg-text)}.vg-panel .vg-tabs button[aria-pressed=true]{color:var(--vg-text);font-weight:600;border-bottom-color:var(--vg-text)}.vg-tab-note{margin-left:auto;padding-bottom:8px;font-size:12px;color:var(--vg-faint)}
+.vg-status{margin:0 0 16px}.vg-status-line{display:flex;align-items:center;gap:8px}.vg-status h3{font-size:15px}.vg-status .vg-sub{margin:2px 0 0 16px}
+.vg-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;background:var(--vg-faint)}.vg-dot-ok{background:var(--vg-ok)}.vg-dot-warn{background:var(--vg-warn)}.vg-dot-active{background:var(--vg-accent)}
+.vg-sub,.vg-muted{color:var(--vg-sub);font-size:12px}.vg-label{font-size:12px;color:var(--vg-faint);margin:16px 0 4px}
+.vg-list{border-top:1px solid var(--vg-line)}.vg-item{padding:10px 0;border-bottom:1px solid var(--vg-line)}.vg-item .vg-row{align-items:flex-start}.vg-item .vg-sub{margin:4px 0 0}.vg-item .vg-link{margin-top:6px}
+.vg-panel summary{cursor:pointer;list-style:none;font-weight:600}.vg-panel summary::-webkit-details-marker{display:none}.vg-answer summary{display:flex;justify-content:space-between;gap:8px}.vg-answer summary::after{content:"⌄";color:var(--vg-faint);font-weight:400}.vg-answer[open] summary::after{content:"⌃"}.vg-answer:not([open]) summary{font-weight:400;color:var(--vg-sub)}
+.vg-card{padding:12px 14px;border-radius:10px;margin:0 0 12px;background:var(--vg-soft)}.vg-choice{border-left:3px solid var(--vg-accent);border-radius:0 10px 10px 0}
+.vg-suggestion{background:var(--vg-soft);border-radius:8px;padding:8px 10px;margin:8px 0}.vg-suggestion p{margin:0 0 6px}
+.vg-receipt{padding:2px 0 10px;margin:0 0 12px;border-bottom:1px solid var(--vg-line)}.vg-receipt-state{font-size:12px;color:var(--vg-ok);font-weight:600}.vg-receipt-unknown,.vg-receipt-pending,.vg-receipt-dispatching,.vg-receipt-queued{color:var(--vg-accent)}.vg-receipt-failed{color:var(--vg-warn)}.vg-receipt summary{font-weight:400;color:var(--vg-sub);font-size:12px}
+.vg-badge{flex-shrink:0;font-size:11px;padding:1px 8px;border-radius:10px;white-space:nowrap;color:var(--vg-sub)}.vg-badge-try{background:var(--vg-blue-bg);color:var(--vg-blue)}.vg-badge-done{color:var(--vg-ok)}
+.vg-text{white-space:pre-wrap;overflow-wrap:anywhere}.vg-notice{padding:8px 10px;border-radius:7px;background:var(--vg-amber-bg);color:var(--vg-amber);font-size:12px}.vg-md p:first-child{margin-top:6px}
+.vg-summary{margin:0 0 6px}.vg-empty{padding:12px 0}.vg-empty button{margin-top:8px}
+.vg-layers{margin:4px 0 12px}.vg-link-down{text-align:center;color:var(--vg-faint);font-size:12px;margin:4px 0 -6px}
+.vg-panel .vg-part{display:flex;width:100%;justify-content:space-between;align-items:flex-start;gap:8px;text-align:left;padding:8px 10px;margin-top:6px;border:1px solid var(--vg-line);border-radius:8px;font-size:13px}
+.vg-panel .vg-part[aria-pressed=true]{background:var(--vg-violet-bg);border-color:transparent;color:var(--vg-violet)}.vg-panel .vg-part[aria-pressed=true] .vg-part-sub{color:var(--vg-violet)}.vg-panel .vg-part-goal{border-color:var(--vg-blue);background:var(--vg-blue-bg)}
+.vg-part-missing{border-style:dashed !important;color:var(--vg-sub);cursor:default}.vg-part-main{display:flex;flex-direction:column;min-width:0}.vg-part-title{font-weight:600}.vg-part-sub{font-size:12px;color:var(--vg-sub)}.vg-changed{color:var(--vg-warn);font-weight:400;font-size:12px}
+.vg-tag{flex-shrink:0;font-size:11px;white-space:nowrap;color:var(--vg-faint)}.vg-tag-ok{color:var(--vg-ok)}.vg-tag-warn{color:var(--vg-warn)}.vg-legend{font-size:11px;color:var(--vg-faint);margin-top:10px}
+.vg-detail{background:var(--vg-soft);border-radius:10px;padding:10px 12px;margin:0 0 12px}.vg-detail h3{margin-bottom:2px}.vg-more summary,.vg-card details summary{font-weight:400;color:var(--vg-sub);font-size:12px}
+.vg-actions{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.vg-attached{margin:6px 0}
+.vg-panel fieldset{border:1px solid var(--vg-line);border-radius:8px;margin:10px 0;min-width:0}.vg-panel label{display:block;margin:8px 0;overflow-wrap:anywhere;font-size:12px;color:var(--vg-sub)}.vg-panel input[type=checkbox]{display:inline-block;width:auto;margin-right:6px}
+.vg-panel select,.vg-panel input{display:block;width:100%;background:transparent;color:var(--vg-text);border:1px solid var(--vg-line-strong);border-radius:7px;padding:6px 8px;font:inherit;font-size:13px;margin:4px 0 0}
+.vg-composer{flex-shrink:0;padding:10px 16px 14px;border-top:1px solid var(--vg-line)}.vg-input{display:flex;gap:8px;align-items:flex-end}.vg-input button{flex-shrink:0}
+.vg-panel textarea{font:inherit;line-height:1.5;background:transparent;color:inherit;border:1px solid var(--vg-line-strong);border-radius:18px;padding:8px 14px;width:100%;resize:none;min-height:36px;max-height:160px;margin:0;transition:min-height .15s}.vg-panel textarea:focus{outline:none;border-color:var(--vg-accent);min-height:80px;border-radius:12px}.vg-panel textarea.vg-filled{min-height:80px;border-radius:12px}
+.vg-panel .vg-composer .vg-primary{border-radius:16px;padding:6px 14px}.vg-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
 `;

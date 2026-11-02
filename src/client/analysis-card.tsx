@@ -9,8 +9,8 @@ export const handoffKey = (source: HandoffSource) => JSON.stringify(source);
 export function SendButton({ source, handoff }: { source: HandoffSource; handoff?: Handoff }) {
   if (!handoff) return null;
   const mine = handoff.sending === handoffKey(source);
-  if (handoff.sent.has(handoffKey(source))) return <button disabled>已发送到主对话</button>;
-  return <button className="vg-primary" disabled={!!handoff.sending || !handoff.ready} onClick={() => handoff.send(source)}>{mine ? '正在写给主 AI…' : '把这个改法发到主对话'}</button>;
+  if (handoff.sent.has(handoffKey(source))) return <span className="vg-sub">已发到主对话</span>;
+  return <button disabled={!!handoff.sending || !handoff.ready} onClick={() => handoff.send(source)}>{mine ? '正在写给主 AI…' : '发到主对话'}</button>;
 }
 
 export function AnalysisCard({ row, onFocus, handoff, children }: {
@@ -23,7 +23,7 @@ export function AnalysisCard({ row, onFocus, handoff, children }: {
         {!!row.possibleAdditions.length && <p>可能需要补充：{row.possibleAdditions.join('；')}</p>}
         {!!row.unknowns.length && <p className="vg-muted">还不能确认：{row.unknowns.join('；')}</p>}
         {children}
-        {row.nextSteps?.map((step, i) => <div className="vg-card" key={i}><strong>{step.label}</strong><p>{step.reason}</p>{!row.historical && <SendButton source={{ kind: 'step', id: row.id, index: i }} handoff={handoff}/>}</div>)}
-        <button onClick={() => onFocus({ ref: { kind: 'analysis', id: row.id, version: row.cacheKey }, label: row.question })}>继续问这个影响</button>
+        {row.nextSteps?.map((step, i) => <div className="vg-suggestion" key={i}><strong>{step.label}</strong><p>{step.reason}</p>{!row.historical && <SendButton source={{ kind: 'step', id: row.id, index: i }} handoff={handoff}/>}</div>)}
+        <button className="vg-link" onClick={() => onFocus({ ref: { kind: 'analysis', id: row.id, version: row.cacheKey }, label: row.question })}>继续问这个影响</button>
       </article>;
 }

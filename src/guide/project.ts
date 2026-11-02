@@ -11,7 +11,8 @@ import { projectEvidence } from './project-scan.js';
 import { redact } from './privacy.js';
 import { WorkService, requirementBasis } from './work.js';
 import type { GuideStore } from './store.js';
-import type { Annotation, HistoryItem, HistoryPage, Overview, ProjectView, Responsibility } from './project-types.js';
+import type { Annotation, HistoryItem, HistoryPage, Layer, MissingPart, Overview, ProjectView, Responsibility } from './project-types.js';
+const layerOf = (value: unknown): Layer => ['page', 'logic', 'data', 'external'].includes(value as string) ? value as Layer : 'other';
 
 const now = () => new Date().toISOString();
 const sameProject = (a: GuideSnapshot, b: GuideSnapshot) => a.scope.projectId === b.scope.projectId && a.scope.sessionId === b.scope.sessionId && b.enabled;
@@ -132,10 +133,11 @@ export class ProjectService {
       const record = await this.store.readProject(snapshot.scope.projectId), requestDigest = hash(value);
       const prior = record.overviews.find(row => row.requestId === value.clientRequestId);
       if (prior) { if (prior.requestDigest !== requestDigest) throw new GuideError('request_conflict', '这次请求的内容已变化。'); return prior; }
-      const cacheKey = hash({ files: evidence.basis.digest, samples: evidence.snippets, model: snapshot.model.route, preferences: snapshot.preferenceVersion, prompt: 'overview-1' });
+      const cacheKey = hash({ files: evidence.basis.digest, samples: evidence.snippets, model: snapshot.model.route, preferences: snapshot.preferenceVersion, prompt: 'overview-2' });
       const cached = record.overviews.find(row => row.cacheKey === cacheKey);
       if (cached) { await this.verify(snapshot, abort); await this.support.hit(snapshot, String(value.clientRequestId), 'cache'); return cached; }
-      const parsed = json(await this.host.structured(snapshot, 'overview', { project: snapshot.projectName,
+      const goals = (await this.work.requirements.list(snapshot.scope)).items.filter(row => row.state === 'active').slice(-8).map(row => redact(row.text).slice(0, 500));
+      const parsed = json(await this.host.structured(snapshot, 'overview', { project: snapshot.projectName, requirements: goals,
         coverage: { scanned: Object.keys(evidence.basis.files).length, complete: evidence.basis.complete, sampled: evidence.snippets.length },
         files: evidence.snippets }, abort));
       const summary = generatedText(parsed.summary, 600);
@@ -144,8 +146,11 @@ export class ProjectService {
       const nodes: Responsibility[] = parsed.nodes.map((node: any, index) => {
         if (!node || !Array.isArray(node.files) || !node.files.length || node.files.some((file: unknown) => typeof file !== 'string' || !allowed.has(file) || assigned.has(file))) invalid();
         node.files.forEach((file: string) => assigned.add(file));
-        return { id: `n${index + 1}`, title: generatedText(node.title, 50), purpose: generatedText(node.purpose, 500), impact: generatedText(node.impact, 500), files: [...new Set<string>(node.files)] };
+        return { id: `n${index + 1}`, title: generatedText(node.title, 50), purpose: generatedText(node.purpose, 500), impact: generatedText(node.impact, 500), files: [...new Set<string>(node.files)],
+          layer: layerOf(node.layer), ...(node.maturity === 'works' || node.maturity === 'mock' ? { maturity: node.maturity, maturityReason: typeof node.maturityReason === 'string' && node.maturityReason.trim() ? generatedText(node.maturityReason, 300) : undefined } : {}) };
       });
+      const missing: MissingPart[] = (Array.isArray(parsed.missing) ? parsed.missing : []).slice(0, 4).filter((row: any) => row && typeof row.title === 'string' && row.title.trim())
+        .map((row: any) => ({ title: generatedText(row.title, 50), purpose: typeof row.purpose === 'string' && row.purpose.trim() ? generatedText(row.purpose, 300) : '', layer: layerOf(row.layer) }));
       const edges: Overview['edges'] = [];
       for (const link of evidence.links) {
         const from = nodes.find(node => node.files.includes(link.from)), to = nodes.find(node => node.files.includes(link.to));
@@ -154,7 +159,7 @@ export class ProjectService {
       await this.verify(snapshot, abort);
       const result: Overview = { id: randomUUID(), projectId: snapshot.scope.projectId, scope: snapshot.scope,
         requestId: value.clientRequestId as string, requestDigest, cacheKey, createdAt: now(), model: snapshot.model.route, preferenceVersion: snapshot.preferenceVersion,
-        basis: evidence.basis, sampledFiles: evidence.snippets.length, summary, nodes, edges,
+        basis: evidence.basis, sampledFiles: evidence.snippets.length, summary, nodes, edges, ...(missing.length ? { missing } : {}),
         unknowns: parsed.unknowns.map(item => generatedText(item, 500)) };
       abort.throwIfAborted();
       await this.store.updateProject(result.projectId, state => { state.overviews.push(result); state.overviews = state.overviews.slice(-30); });

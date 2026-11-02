@@ -5,7 +5,7 @@ import { AnalysisCard, SendButton } from './analysis-card.js';
 import type { Handoff } from './analysis-card.js';
 import { Markdown } from './markdown.js';
 import type { Explanation, GuideSnapshot } from '../guide/contracts.js';
-import type { Focus, ProjectView } from '../guide/project-types.js';
+import type { Focus, Layer, ProjectView } from '../guide/project-types.js';
 
 export type GuideTab = 'progress' | 'structure' | 'settings';
 type Rpc = <T>(method: string, request: unknown, signal: AbortSignal) => Promise<T>;
@@ -74,36 +74,52 @@ export function ProjectPanels({ tab, snapshot, answers, rpc, onFocus, onChanged,
     {tab === 'settings' && <SupportPanel scope={scope} rpc={rpc} onChanged={onChanged}/> }
     {tab === 'progress' && <ProgressAnswers answers={answers} view={view} onQuestion={onQuestion} onFocus={onFocus} handoff={handoff}/>}
     {tab === 'structure' && <section aria-label="项目结构">
-      <div className="vg-row"><h3>这个项目由哪些部分组成</h3>{(!overview || overview.historical) && <button disabled={!!busy || !modelReady} onClick={() => void run('overview', {})}>{overview ? '更新概览' : '生成项目概览'}</button>}</div>
-      {!overview && <p className="vg-card">还没有生成概览。点上方按钮，了解各部分承担什么、对使用有什么影响。</p>}
+      {!overview && <div className="vg-empty"><p>还没有生成概览。生成后能看到项目分成哪几部分、各自做到什么程度。</p>
+        <button className="vg-primary" disabled={!!busy || !modelReady} onClick={() => void run('overview', {})}>生成项目概览</button></div>}
       {overview && <>
-        <article className="vg-card"><p>{overview.summary}</p>
-          {overview.historical && <p className="vg-notice">项目文件有变化，可以更新概览。</p>}
-        </article>
-        <small className="vg-muted">点一个部分，看它负责什么</small>
-        <div className="vg-graph-scroll">
-          <svg role="group" aria-label="项目职责图，关系仅为观察到的代码引用" viewBox={`0 0 400 ${Math.ceil(overview.nodes.length / 2) * 105 + 20}`} style={{ width: '100%' }}>
-            {overview.edges.map((edge, index) => {
-              const a = overview.nodes.findIndex(row => row.id === edge.from), b = overview.nodes.findIndex(row => row.id === edge.to);
-              return <line key={index} x1={a % 2 * 200 + 100} y1={Math.floor(a / 2) * 105 + 50} x2={b % 2 * 200 + 100} y2={Math.floor(b / 2) * 105 + 50} stroke="#789185" strokeDasharray="4 4"/>;
-            })}
-            {overview.nodes.map((item, index) => <g key={item.id} role="button" tabIndex={0} aria-label={`${item.title}${overview.changedNodes.includes(item.id) ? '，相关文件有变化' : ''}`} aria-pressed={`${overview.id}:${item.id}` === selected}
-              transform={`translate(${index % 2 * 200 + 8},${Math.floor(index / 2) * 105 + 12})`} onClick={() => focusNode(item.id)} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); focusNode(item.id); } }}>
-              <rect width="184" height="76" rx="12" fill={goalNodes.has(item.id) ? '#dce9fa' : `${overview.id}:${item.id}` === selected ? '#d6e8dc' : '#edf2ee'} stroke={overview.changedNodes.includes(item.id) ? '#bc8a3d' : '#789185'} strokeWidth={`${overview.id}:${item.id}` === selected ? 2 : 1}/>
-              <text x="12" y={overview.changedNodes.includes(item.id) ? 32 : 43} fill="#263b35" fontSize="13">{item.title.length > 12 ? item.title.slice(0, 11) + '…' : item.title}</text>
-              {overview.changedNodes.includes(item.id) && <text x="12" y="55" fill="#a0742f" fontSize="10">有变化</text>}
-            </g>)}
-          </svg>
-        </div>
-        {goal && <p className="vg-muted">蓝色是和“{goal.question}”可能相关的部分。</p>}
-        {node && <article className="vg-card"><h3>{node.title}</h3><p>{node.purpose}</p><p><strong>对使用的影响：</strong>{node.impact}</p>
-          <button onClick={() => onFocus({ ref: { kind: 'node', id: `${overview.id}:${node.id}`, version: overview.id }, label: node.title })}>追问这一部分</button>
-        </article>}
-        {!!overview.unknowns.length && <article className="vg-card"><h3>还不能确认</h3><ul>{overview.unknowns.map((item, index) => <li key={index}>{item}</li>)}</ul></article>}
+        <p className="vg-summary">{overview.summary}</p>
+        {overview.historical && <p className="vg-sub">项目文件有变化。<button className="vg-link" disabled={!!busy || !modelReady} onClick={() => void run('overview', {})}>更新概览</button></p>}
+        <Layers overview={overview} selected={selected} goalNodes={goalNodes} onSelect={focusNode}/>
+        {goal && <p className="vg-sub">蓝色是和“{goal.question}”可能相关的部分。</p>}
+        {node && <div className="vg-detail">
+          <h3>{node.title}</h3><p>{node.purpose}</p><p><span className="vg-sub">对使用的影响：</span>{node.impact}</p>
+          {node.maturityReason && <p className="vg-sub">AI 推测：{node.maturityReason}</p>}
+          <button className="vg-link" onClick={() => onFocus({ ref: { kind: 'node', id: `${overview.id}:${node.id}`, version: overview.id }, label: node.title })}>问问这部分</button>
+        </div>}
+        {!!overview.unknowns.length && <details className="vg-more"><summary>还不能确认的地方</summary><ul>{overview.unknowns.map((item, index) => <li key={index}>{item}</li>)}</ul></details>}
       </>}
     </section>}
     <WorkPanels view={view} sessionId={snapshot.scope.sessionId} tab={tab} busy={busy} modelReady={modelReady} run={run} onFocus={onFocus} handoff={handoff}/>
   </>;
+}
+
+const LAYERS: Array<[Layer, string, string]> = [['page', '用户看到的', ''], ['logic', '背后的规则', '用到'], ['data', '数据存在哪里', '保存在'], ['external', '外部服务', '连接'], ['other', '其他部分', '']];
+const MATURITY = { works: ['能用', 'ok'], mock: ['模拟', 'warn'] } as const;
+
+/** Parts grouped from what people see down to where data lives, each with an AI-inferred maturity. */
+function Layers({ overview, selected, goalNodes, onSelect }: { overview: NonNullable<ProjectView['overview']>; selected?: string; goalNodes: Set<string | undefined>; onSelect: (id: string) => void }) {
+  const groups = LAYERS.map(([layer, label, link]) => ({ layer, label, link,
+    nodes: overview.nodes.filter(node => (node.layer ?? 'other') === layer), missing: (overview.missing ?? []).filter(row => row.layer === layer) }))
+    .filter(group => group.nodes.length || group.missing.length);
+  const rated = overview.nodes.some(node => node.maturity) || !!overview.missing?.length;
+  return <div className="vg-layers">
+    {groups.map((group, index) => <div key={group.layer}>
+      {index > 0 && <div className="vg-link-down">↓{group.link && ` ${group.link}`}</div>}
+      <div className="vg-label">{group.label}</div>
+      {group.nodes.map(node => {
+        const key = `${overview.id}:${node.id}`, changed = overview.changedNodes.includes(node.id), maturity = node.maturity && MATURITY[node.maturity];
+        return <button key={node.id} className={`vg-part${goalNodes.has(node.id) ? ' vg-part-goal' : ''}`} aria-pressed={key === selected} onClick={() => onSelect(node.id)}>
+          <span className="vg-part-main"><span className="vg-part-title">{node.title}{changed && <span className="vg-changed"> · 刚改过</span>}</span><span className="vg-part-sub">{node.purpose}</span></span>
+          {maturity && <span className={`vg-tag vg-tag-${maturity[1]}`}>{maturity[1] === 'ok' ? '●' : '◐'} {maturity[0]}</span>}
+        </button>;
+      })}
+      {group.missing.map((row, i) => <div key={i} className="vg-part vg-part-missing">
+        <span className="vg-part-main"><span className="vg-part-title">{row.title}</span>{row.purpose && <span className="vg-part-sub">{row.purpose}</span>}</span>
+        <span className="vg-tag">○ 还没做</span>
+      </div>)}
+    </div>)}
+    {rated && <p className="vg-legend">● 能用　◐ 模拟或示意　○ 还没做　· 由 AI 根据代码推测</p>}
+  </div>;
 }
 
 /** Keep the latest trouble explanation, the failures it is about and its actions in one card, above requirements. */
@@ -124,11 +140,11 @@ export function ProgressAnswers({ answers, view, onQuestion, onFocus, handoff }:
   return <>
     {latest && !latest.historical ? <section aria-label="卡住时的下一步"><AnalysisCard row={latest} onFocus={onFocus} handoff={handoff}>{facts}</AnalysisCard></section>
       : stuck && <section className="vg-card" aria-label="卡住时的下一步"><h3>还没有顺利通过</h3>{facts}{ask}</section>}
-    {shown.map(answer => <details key={answer.id} className="vg-card vg-answer" open={answer.id === newest?.id}>
-      <summary>{answer.contextLabel && <small className="vg-muted">关于 {answer.contextLabel}<br/></small>}{answer.choiceId ? '这道选择题的各个选项' : answer.question}{answer.state === 'historical' && <small className="vg-muted"> · 之前的</small>}</summary>
-      {answer.state === 'historical' && <p className="vg-notice">这是之前的讲解，情况可能已经变了。</p>}
+    {!!shown.length && <div className="vg-label">讲解</div>}
+    <div className="vg-list">{shown.map(answer => <details key={answer.id} className="vg-item vg-answer" open={answer.id === newest?.id}>
+      <summary>{answer.contextLabel && <small className="vg-sub">关于 {answer.contextLabel}<br/></small>}{answer.choiceId ? '这道选择题的各个选项' : answer.question}{answer.state === 'historical' && <small className="vg-sub"> · 之前的</small>}</summary>
       <Markdown text={answer.text}/>
-      {answer.suggestion && answer.state !== 'historical' && <div className="vg-suggestion"><p><strong>可以这样改：</strong>{answer.suggestion}</p><SendButton source={{ kind: 'explanation', id: answer.id }} handoff={handoff}/></div>}
-    </details>)}
+      {answer.suggestion && answer.state !== 'historical' && <div className="vg-suggestion"><p>可以这样改：{answer.suggestion}</p><SendButton source={{ kind: 'explanation', id: answer.id }} handoff={handoff}/></div>}
+    </details>)}</div>
   </>;
 }

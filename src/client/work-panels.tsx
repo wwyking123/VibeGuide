@@ -17,19 +17,19 @@ export function WorkPanels({ view, sessionId, tab, busy, run, onFocus, handoff }
   const ref = (row: Requirement) => ({ id: row.id, version: row.version });
   return <>
     {tab === 'progress' && <section aria-label="逐条要求的完成情况">
-      {(showAll ? !!outcomes.length : !!primary.size) && <h3>你的要求做到哪一步了</h3>}
+      {(showAll ? !!outcomes.length : !!primary.size) && <div className="vg-label">你的要求</div>}<div className="vg-list">
       {outcomes.filter(outcome => showAll || primary.has(outcome)).map(outcome => {
         const row = outcome.requirement;
         const label = outcome.state === 'complete' ? '已完成' : outcome.state === 'needs_feedback' ? '可以试用了' : '还在做';
         const reason = { awaiting_delivery: '还没送到主对话', needs_scope: '', needs_changes: '', needs_checks: '还缺检查', check_failed: '检查没通过，可以在上面梳理卡住的情况',
           needs_feedback: '按主对话里说的重点试一试；不满意直接在主对话说', feedback_failed: '', stale: '', complete: '' }[outcome.state];
-        return <article className="vg-card" key={row.id}>
-          <div className="vg-row"><h3 className="vg-text">{row.text}</h3><span className={`vg-badge vg-badge-${label === '已完成' ? 'done' : label === '可以试用了' ? 'try' : 'doing'}`}>{label}</span></div>
-          {reason && <p className="vg-muted">{reason}</p>}
-          {outcome.state === 'needs_feedback' && <div className="vg-actions"><button disabled={!!busy} onClick={() => void run('confirmRequirement', { requirement: ref(row) })}>没问题了</button></div>}
+        return <article className="vg-item" key={row.id}>
+          <div className="vg-row"><span className="vg-text">{row.text}</span><span className={`vg-badge vg-badge-${label === '已完成' ? 'done' : label === '可以试用了' ? 'try' : 'doing'}`}>{label}</span></div>
+          {reason && <p className="vg-sub">{reason}</p>}
+          {outcome.state === 'needs_feedback' && <button className="vg-link" disabled={!!busy} onClick={() => void run('confirmRequirement', { requirement: ref(row) })}>没问题了</button>}
         </article>;
-      })}
-      {outcomes.length > primary.size && <button onClick={() => setShowAll(value => !value)}>{showAll ? '只看本会话未完成的要求' : `另有 ${outcomes.length - primary.size} 条要求`}</button>}
+      })}</div>
+      {outcomes.length > primary.size && <button className="vg-link" onClick={() => setShowAll(value => !value)}>{showAll ? '只看本会话未完成的要求' : `另有 ${outcomes.length - primary.size} 条要求`}</button>}
     </section>}
     {tab === 'settings' && <section className="vg-card" aria-label="历史记忆"><h3>历史记忆</h3>
       <p className="vg-muted">你提过的要求和约定。从侧栏发送改法时，会自动带上相关的几条。</p>

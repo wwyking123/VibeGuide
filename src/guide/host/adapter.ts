@@ -187,7 +187,11 @@ export class HarnessAdapter {
 
   async structured(snapshot: GuideSnapshot, task: 'overview' | 'trial' | 'goal' | 'changes' | 'trouble', source: unknown, signal: AbortSignal): Promise<string> {
     const schema = task === 'overview'
-      ? '返回 JSON {"summary":"这个项目为谁解决什么问题，150字以内","nodes":[{"title":"用户能理解的职责名称","purpose":"可能承担什么作用","impact":"对使用的影响与局限","files":["提供的摘录路径"]}],"unknowns":["还不能确认的部分"]}。节点1到8个，每个至少一个来源文件。只使用实际提供摘录的路径；每个文件只能分配给一个节点。职责和效果是推测，不是功能验收。文档中的愿望不能当作已实现。不要生成关系线。'
+      ? '返回 JSON {"summary":"这个项目为谁解决什么问题，150字以内","nodes":[{"title":"用户能理解的职责名称，10字以内","layer":"page|logic|data|external","purpose":"一句话说它做什么，20字以内","impact":"对使用的影响与局限","maturity":"works|mock","maturityReason":"判断依据，一句话","files":["提供的摘录路径"]}],"missing":[{"title":"还没做的部分","layer":"page|logic|data|external","purpose":"为什么需要，一句话"}],"unknowns":["还不能确认的部分"]}。'
+        + 'layer：page=用户直接看到和操作的页面；logic=背后的处理和规则；data=数据保存在哪里；external=登录、支付、地图等外部服务。'
+        + 'maturity：works=摘录显示真的实现了；mock=看起来有但用的是写死的数据、模拟对象、占位或只在界面上示意。拿不准就写 mock 并说明。'
+        + '节点1到8个，每个至少一个来源文件。只使用实际提供摘录的路径；每个文件只能分配给一个节点。missing最多4项，只列 requirements 或项目目标明确需要、但摘录中看不到实现的部分，不要凭空扩展需求。'
+        + '职责和成熟度都是推测，不是功能验收。文档中的愿望不能当作已实现。不要生成关系线。'
       : task === 'trial' ? '返回 JSON {"steps":[{"action":"用户可执行的一个试用动作","expected":"应看到的具体效果"}]}，1到6步。针对提供的原始要求及所有补充，不可把否定、人数、权限、隐私或条件反转。只生成建议的试用步骤，不执行、不声称通过。缺乏环境信息时在动作中写明先决条件，不编造网址和账号。'
       : task === 'trouble' ? '返回 JSON {"summary":"目前卡住在哪里","impacts":["对使用的影响"],"nodes":[],"possibleAdditions":[],"unknowns":["未知原因"],"sources":[],"nextSteps":[{"label":"下一步选项","reason":"能确认什么及代价","request":"给主 AI 的明确修改或检查要求草稿"}]}。nextSteps最多3项，其余数组最多8项。只从trouble中实际记录的检查、操作和试用反馈说明尝试和失败。相同检查连续失败不证明同一根因；修改发生在两次检查之间不证明针对该故障。先说明现象与已尝试，再给有取舍的下一步选项。原因是推测就说明，不把历史失败说成当前失败，不声称已修好。request以“请”开头，保留用户限制，不要求重置、删除数据、泄露凭证或批准权限。材料不足时说明还缺什么。'
       : '返回 JSON {"summary":"先回答用户目标或这次改动意味着什么","impacts":["对使用的具体影响和限制"],"nodes":[{"id":"仅已提供概览中的节点id，没有则省略","title":"用户可懂的职责","reason":"与目标的关系","files":["实际提供的文件路径"]}],"possibleAdditions":["可能需要补充但未观察到的能力"],"unknowns":["无法确认的部分"],"sources":["实际提供的文件路径"]}。每个数组最多8项，sources最多24项。changes任务只根据changes里的实际before/after解释变化，当前文件只能辅助理解，不能凭当前内容编造之前的状态；没有差异证据就明确不知道。goal任务区分已有部分、可能新增和未知。保留原要求的否定、数字、角色和条件；建议不是决定，不得声称已实现或已验证。';

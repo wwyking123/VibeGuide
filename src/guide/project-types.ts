@@ -3,11 +3,16 @@ import type { SupportRecord } from './support-types.js';
 import type { ContextRef, Explanation, FileBasis, ModelRoute, Scope } from './contracts.js';
 import type { Analysis, Confirmation, OutcomeBinding, RequirementRef, RequirementRevision, WorkView } from './work-types.js';
 
-export type Responsibility = { id: string; title: string; purpose: string; impact: string; files: string[] };
+export type Layer = 'page' | 'logic' | 'data' | 'external' | 'other';
+/** AI-inferred from the sampled files: works = really does it, mock = looks done but is simulated or placeholder. */
+export type Maturity = 'works' | 'mock';
+export type Responsibility = { id: string; title: string; purpose: string; impact: string; files: string[]; layer?: Layer; maturity?: Maturity; maturityReason?: string };
+/** Parts the goal or requirements need but no sampled file implements yet. */
+export type MissingPart = { title: string; purpose: string; layer: Layer };
 export type Overview = {
   id: string; projectId: string; scope: Scope; requestId: string; requestDigest: string; cacheKey: string;
   createdAt: string; model: ModelRoute; preferenceVersion?: string; basis: FileBasis; sampledFiles: number;
-  summary: string; unknowns: string[]; nodes: Responsibility[];
+  summary: string; unknowns: string[]; nodes: Responsibility[]; missing?: MissingPart[];
   edges: { from: string; to: string }[];
 };
 export type Annotation = {
@@ -57,7 +62,7 @@ export function validProject(value: ProjectRecord, projectId: string): boolean {
     && value.analyses.every(row => row.projectId === projectId && ['changes', 'goal', 'trouble'].includes(row.kind) && typeof row.summary === 'string' && typeof row.basis?.digest === 'string' && Array.isArray(row.nodes) && Array.isArray(row.sources))
     && value.overviews.every(row => row.projectId === projectId && row.scope?.projectId === projectId && typeof row.id === 'string'
       && typeof row.summary === 'string' && typeof row.basis?.digest === 'string' && !!row.basis.files && Array.isArray(row.unknowns)
-      && Array.isArray(row.nodes) && row.nodes.length <= 8 && row.nodes.every(node => typeof node.title === 'string' && typeof node.id === 'string' && Array.isArray(node.files)) && Array.isArray(row.edges))
+      && (row.missing === undefined || Array.isArray(row.missing) && row.missing.length <= 4) && Array.isArray(row.nodes) && row.nodes.length <= 8 && row.nodes.every(node => typeof node.title === 'string' && typeof node.id === 'string' && Array.isArray(node.files)) && Array.isArray(row.edges))
     && value.annotations.every(row => typeof row.id === 'string' && typeof row.explanationId === 'string' && ['correct', 'retire'].includes(row.action)
       && (row.action !== 'correct' || typeof row.text === 'string'))
     && value.trials.every(row => row.projectId === projectId && typeof row.id === 'string' && typeof row.requirement === 'string'
