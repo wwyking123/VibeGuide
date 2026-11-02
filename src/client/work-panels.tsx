@@ -5,15 +5,16 @@ import type { Outcome, Requirement, RequirementRef } from '../guide/work-types.j
 import type { GuideTab } from './project-panels.js';
 
 type Run = (method: string, fields: Record<string, unknown>) => Promise<boolean | void>;
-export function WorkPanels({ view, tab, busy, modelReady, run, background, onBackground, onQuestion, onFocus }: {
-  view?: ProjectView; tab: GuideTab; busy: string; modelReady: boolean; run: Run;
+export function WorkPanels({ view, sessionId, tab, busy, modelReady, run, background, onBackground, onQuestion, onFocus }: {
+  view?: ProjectView; sessionId: string; tab: GuideTab; busy: string; modelReady: boolean; run: Run;
   background?: RequirementRef[]; onBackground: (refs: RequirementRef[] | undefined) => void;
   onQuestion: (text: string) => void; onFocus: (focus: Focus) => void;
 }) {
   const [edit, setEdit] = useState<{ row: Requirement; text: string; applicability: Requirement['applicability'] }>();
   const [binding, setBinding] = useState<{ outcome: Outcome; selected: Record<string, string[]>; confirmed: boolean }>();
-  const [showRetired, setShowRetired] = useState(false);
-  const work = view?.work;
+  const [showRetired, setShowRetired] = useState(false), [showAll, setShowAll] = useState(false);
+  const work = view?.work, outcomes = work?.outcomes ?? [];
+  const primary = new Set(outcomes.filter(row => row.requirement.scope.sessionId === sessionId && row.state !== 'complete'));
   const ref = (row: Requirement) => ({ id: row.id, version: row.version });
   const opKey = (row: { sessionId: string; id: string }) => `${row.sessionId}:${row.id}`;
   const startBinding = (outcome: Outcome) => {
@@ -23,18 +24,20 @@ export function WorkPanels({ view, tab, busy, modelReady, run, background, onBac
   };
   return <>
     {tab === 'progress' && <section aria-label="逐条要求的完成情况">
-      {!!work?.outcomes.length && <><h3>你的要求做到哪一步了</h3><p className="vg-muted">逐条核对实际改动、检查和试用。显示完成仅限你确认的范围，不代表整个项目已验收。</p></>}
-      {work?.outcomes.map(outcome => {
-        const trial = view?.trials.find(row => row.id === outcome.trialId), row = outcome.requirement;
+      {(showAll ? !!outcomes.length : !!primary.size) && <h3>你的要求做到哪一步了</h3>}
+      {outcomes.filter(outcome => showAll || primary.has(outcome)).map(outcome => {
+        const trial = view?.trials.find(row => row.id === outcome.trialId), row = outcome.requirement, current = !!trial && !trial.historical;
+        const label = outcome.state === 'complete' ? '已完成' : outcome.state === 'needs_feedback' ? '可以试用了' : '还在做';
+        const reason = { awaiting_delivery: '还没送到主对话', needs_scope: current ? '试用步骤已准备，等你核对范围' : '做完后可以准备试用步骤', needs_changes: '还没有对应的改动',
+          needs_checks: '还缺检查', check_failed: '检查没通过', needs_feedback: '按下方步骤试一试', feedback_failed: '你试用时发现的问题还没解决', stale: '要求或文件变了，需要重新试用', complete: '' }[outcome.state];
         return <article className="vg-card" key={row.id}>
-          <h3 className="vg-text">{row.text}</h3><p role="status" className="vg-notice">{outcome.message}</p>
-          {!!outcome.missing.length && <ul>{outcome.missing.map((item, i) => <li key={i}>{item}</li>)}</ul>}
-          {!!outcome.steps.length && <ul>{outcome.steps.map(step => <li key={step.id}>{step.action}：改动{step.changes ? '已对应' : '待核对'}；检查{step.checks === 'passed' ? '通过' : step.checks === 'failed' ? '失败' : '待补齐'}；试用{step.feedback === 'pass' ? '符合预期' : step.feedback === 'fail' ? '不符合预期' : '待反馈'}</li>)}</ul>}
-          <div className="vg-actions">
-            <button disabled={!!busy || !modelReady || outcome.state === 'awaiting_delivery'} onClick={() => void run('prepareReview', { requirement: ref(row) })}>{trial && !trial.historical ? '查看 / 复用试用步骤' : '准备当前版本的试用步骤'}</button>
-            {trial && !trial.historical && <button disabled={!!busy} onClick={() => startBinding(outcome)}>核对这条要求的范围</button>}
-            <button onClick={() => onQuestion(`请添加并运行针对以下要求的检查，保留原要求和限制，并在主对话说明检查对应的使用效果：\n${row.text}`)}>请主 AI 补齐检查</button>
-          </div>
+          <div className="vg-row"><h3 className="vg-text">{row.text}</h3><span className={`vg-badge vg-badge-${label === '已完成' ? 'done' : label === '可以试用了' ? 'try' : 'doing'}`}>{label}</span></div>
+          {reason && <p className="vg-muted">{reason}</p>}
+          {outcome.state !== 'complete' && <div className="vg-actions">
+            {['check_failed', 'needs_checks'].includes(outcome.state) ? <button onClick={() => onQuestion(`请添加并运行针对以下要求的检查，保留原要求和限制，并在主对话说明检查对应的使用效果：\n${row.text}`)}>请主 AI 补齐检查</button>
+              : outcome.state === 'needs_scope' && current ? <button disabled={!!busy} onClick={() => startBinding(outcome)}>核对范围</button>
+              : outcome.state !== 'awaiting_delivery' && !current && <button disabled={!!busy || !modelReady} onClick={() => void run('prepareReview', { requirement: ref(row) })}>准备试用步骤</button>}
+          </div>}
           {binding?.outcome.requirement.id === row.id && trial && <form onSubmit={event => {
             event.preventDefault(); void run('bindOutcome', { requirement: ref(binding.outcome.requirement), trialId: trial.id,
               evidenceVersion: binding.outcome.evidenceVersion, scopeConfirmed: binding.confirmed,
@@ -42,7 +45,7 @@ export function WorkPanels({ view, tab, busy, modelReady, run, background, onBac
                 changes: binding.outcome.candidates.filter(item => item.kind === 'change' && binding.selected[step.id]?.includes(opKey(item.ref))).map(item => item.ref),
                 checks: binding.outcome.candidates.filter(item => item.kind === 'check' && binding.selected[step.id]?.includes(opKey(item.ref))).map(item => item.ref) })) }).then(ok => { if (ok) setBinding(undefined); });
           }}>
-            <p className="vg-muted">已预选同一条用户输入下记录的操作，但这不能证明检查覆盖了功能。只选择确实对应这一步的记录；不确定时可保留待核对，开发照常进行。</p>
+            <p className="vg-muted">勾选确实对应这一步的改动和检查；不确定可以先不选。</p>
             {trial.steps.map(step => <fieldset key={step.id}><legend>{step.action}</legend><p>预期：{step.expected}</p>
               {binding.outcome.candidates.filter(item => item.current).map(item => <label key={opKey(item.ref)}><input type="checkbox" checked={binding.selected[step.id]?.includes(opKey(item.ref)) ?? false} onChange={event => {
                 const key = opKey(item.ref), current = binding.selected[step.id] ?? [];
@@ -55,6 +58,7 @@ export function WorkPanels({ view, tab, busy, modelReady, run, background, onBac
           </form>}
         </article>;
       })}
+      {outcomes.length > primary.size && <button onClick={() => setShowAll(value => !value)}>{showAll ? '只看本会话未完成的要求' : `另有 ${outcomes.length - primary.size} 条要求`}</button>}
     </section>}
     {tab === 'settings' && <section className="vg-card" aria-label="历史记忆"><h3>历史记忆</h3>
       <p className="vg-muted">你提过的要求和约定。提出修改时，会自动附带相关的几条；也可以自己指定。</p>

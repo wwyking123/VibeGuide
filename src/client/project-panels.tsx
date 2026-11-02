@@ -67,7 +67,8 @@ export function ProjectPanels({ tab, snapshot, answers, rpc, onFocus, onChanged,
 
   const overview = view?.overview, node = overview?.nodes.find(item => `${overview.id}:${item.id}` === selected);
   const latestTrials = new Map(view?.trials.map(card => [card.deliveryId, card.id]));
-  const trials = view?.trials.filter(card => showOldTrials || latestTrials.get(card.deliveryId) === card.id) ?? [];
+  const latestCurrent = (card: ProjectView['trials'][number]) => latestTrials.get(card.deliveryId) === card.id && !card.historical;
+  const trials = view?.trials.filter(card => showOldTrials || latestCurrent(card)) ?? [];
   const focusNode = (id: string) => {
     setSelected(`${overview?.id}:${id}`);
   };
@@ -78,14 +79,6 @@ export function ProjectPanels({ tab, snapshot, answers, rpc, onFocus, onChanged,
     {busy && <p role="status" className="vg-muted">{busy === 'overview' ? '正在按你的请求整理项目概览…' : busy === 'prepareReview' ? '正在准备这条要求的试用步骤…' : busy === 'analyze' ? '正在解释实际影响…' : '正在保存你的记录…'} 主对话照常进行。</p>}
     {tab === 'settings' && <SupportPanel scope={scope} rpc={rpc} onChanged={onChanged}/> }
     {tab === 'progress' && <ProgressAnswers answers={answers} view={view} onQuestion={onQuestion} onFocus={onFocus}/>}
-    {tab === 'progress' && view?.work?.trouble && (!!view.work.trouble.failures.length || !!view.work.trouble.feedback.length) && <section className="vg-card" aria-label="失败与尝试">
-      <h3>哪些地方还没有顺利通过</h3>
-      {view.work.trouble.failures.map(row => <p key={row.id}>{row.count > 1 ? (view.work!.trouble!.incomplete ? `已观察到同一检查失败 ${row.count} 次` : `同一检查已连续失败 ${row.count} 次`) : '一项检查未通过'}{row.current ? '（对应当前文件）' : '（旧版本或范围尚未核对，需重新检查）'}。</p>)}
-      {view.work.trouble.feedback.map(row => <p key={row.id}>你的试用反馈：{row.action} — 未符合预期{row.historical ? '（旧版本）' : ''}{row.note && `；${row.note}`}</p>)}
-      <p className="vg-muted">只记录检查与反馈，不凭次数判断故障原因。{view.work.trouble.incomplete && '部分历史记录未能读取。'}</p>
-      <button onClick={() => onQuestion('现在卡住在哪里？请结合实际尝试和失败记录，解释使用影响，并给出下一步的选择。')}>梳理这次卡住的情况</button>
-      <details><summary>最近尝试的结果</summary><ul>{view.work.trouble.attempts.map(row => <li key={row.id}>{date(row.at)} · {row.changed ? `修改了 ${row.changed} 个文件` : '运行操作或检查'}：{row.result === 'failed' ? '未成功' : row.result === 'succeeded' ? '正常结束' : '结果未知'}</li>)}</ul><p className="vg-muted">先后顺序不表示这些修改都针对同一问题；正常结束不等于符合需求。</p></details>
-    </section>}
     {tab === 'structure' && <section aria-label="项目结构">
       <div className="vg-row"><h3>这个项目由哪些部分组成</h3>{(!overview || overview.historical) && <button disabled={!!busy || !modelReady} onClick={() => void run('overview', {})}>{overview ? '更新概览' : '生成项目概览'}</button>}</div>
       {!overview && <p className="vg-card">还没有生成概览。点上方按钮，了解各部分承担什么、对使用有什么影响。</p>}
@@ -118,18 +111,17 @@ export function ProjectPanels({ tab, snapshot, answers, rpc, onFocus, onChanged,
         {!!overview.unknowns.length && <article className="vg-card"><h3>还不能确认</h3><ul>{overview.unknowns.map((item, index) => <li key={index}>{item}</li>)}</ul></article>}
       </>}
     </section>}
-    <WorkPanels view={view} tab={tab} busy={busy} modelReady={modelReady} run={run} background={background} onBackground={onBackground} onQuestion={onQuestion} onFocus={onFocus}/>
+    <WorkPanels view={view} sessionId={snapshot.scope.sessionId} tab={tab} busy={busy} modelReady={modelReady} run={run} background={background} onBackground={onBackground} onQuestion={onQuestion} onFocus={onFocus}/>
     {tab === 'progress' && <section aria-label="试用反馈">
       {(snapshot.deliveries?.some(row => row.state === 'accepted') || !!trials.length) && <h3>按你的要求试一试</h3>}
       {!view?.work && snapshot.deliveries?.filter(row => row.state === 'accepted').map(delivery => <article className="vg-card" key={delivery.id}>
         <p className="vg-text">{delivery.content}</p>
         <button disabled={!!busy || !modelReady} onClick={() => void run('prepareReview', { deliveryId: delivery.id })}>为这条要求准备试用步骤</button>
-        <p className="vg-muted">点击才生成建议。收到要求不等于已经做好；等主对话完成相关修改后再实际试用。</p>
       </article>)}
       {trials.map(card => <article className="vg-card" key={card.id} data-vg-trial={card.id}>
         <small className="vg-muted">试用记录 · {date(card.createdAt)}{card.scope.sessionId !== snapshot.scope.sessionId ? ' · 来自本项目其他会话' : ''}</small>
         <h3 className="vg-text">{card.requirement}</h3>
-        {card.historical && <p className="vg-notice">文件已变化，这些是旧版本的步骤和反馈。请在上方对应要求中，为当前版本重新准备试用。</p>}
+        {card.historical && <p className="vg-notice">这是旧版本的试用记录。</p>}
         {!card.basis.complete && <p className="vg-notice">项目读取范围不完整；反馈只表示你试用时的体验，不能确认整个项目版本。</p>}
         <ol>{card.steps.map(step => {
           const feedback = card.feedback.filter(row => row.stepId === step.id).at(-1), key = `${card.id}:${step.id}`;
@@ -139,26 +131,32 @@ export function ProjectPanels({ tab, snapshot, answers, rpc, onFocus, onChanged,
               <div className="vg-actions">{(['pass', 'fail'] as const).map(result => <button key={result} disabled={!!busy} onClick={() => void run('feedback', { cardId: card.id, stepId: step.id, fileDigest: card.basis.digest, result, ...(notes[key]?.trim() ? { note: notes[key] } : {}) })}>{result === 'pass' ? '这一步符合预期' : '这一步不符合预期'}</button>)}</div></>}
           </li>;
         })}</ol>
-        <p className="vg-muted">反馈只对应这一步体验。上方会结合已确认的范围、实际改动和适用检查核对这条要求。需要调整时，在下方明确提出修改要求。</p>
       </article>)}
-      {view && view.trials.length > latestTrials.size && <button onClick={() => setShowOldTrials(value => !value)}>{showOldTrials ? '收起早期试用记录' : '查看早期试用记录'}</button>}
+      {view && view.trials.some(card => !latestCurrent(card)) && <button onClick={() => setShowOldTrials(value => !value)}>{showOldTrials ? '收起早期试用记录' : '查看早期试用记录'}</button>}
     </section>}
   </>;
 }
 
-/** Keep the latest trouble explanation and its actions together, above project-wide requirements. */
+/** Keep the latest trouble explanation, the failures it is about and its actions in one card, above requirements. */
 export function ProgressAnswers({ answers, view, onQuestion, onFocus }: {
   answers: Explanation[]; view?: ProjectView; onQuestion: (text: string) => void; onFocus: (focus: Focus) => void;
 }) {
   const troubles = view?.work?.analyses.filter(row => row.kind === 'trouble') ?? [];
-  const latest = troubles.at(-1), merged = new Set(troubles.map(row => row.id));
+  const latest = troubles.at(-1), merged = new Set(troubles.map(row => row.id)), trouble = view?.work?.trouble;
+  const stuck = !!trouble && (!!trouble.failures.length || !!trouble.feedback.length);
+  const facts = stuck && <>
+    {trouble.failures.map(row => <p key={row.id}>{row.count > 1 ? `同一检查连续失败 ${row.count} 次` : '有一项检查没通过'}{row.current ? '' : '（旧版本，需要重新检查）'}</p>)}
+    {trouble.feedback.map(row => <p key={row.id}>你试用时：{row.action} — 不符合预期{row.historical ? '（旧版本）' : ''}{row.note && `；${row.note}`}</p>)}
+    <details><summary>最近尝试的结果</summary><ul>{trouble.attempts.map(row => <li key={row.id}>{date(row.at)} · {row.changed ? `修改了 ${row.changed} 个文件` : '运行操作或检查'}：{row.result === 'failed' ? '未成功' : row.result === 'succeeded' ? '正常结束' : '结果未知'}</li>)}</ul></details>
+  </>;
+  const ask = <button onClick={() => onQuestion('现在卡住在哪里？请结合实际尝试和失败记录，解释使用影响，并给出下一步的选择。')}>{latest ? '重新梳理卡住的情况' : '梳理这次卡住的情况'}</button>;
   return <>
-    {latest && <section aria-label="卡住时的下一步"><AnalysisCard row={latest} onQuestion={onQuestion} onFocus={onFocus}/></section>}
+    {latest && !latest.historical ? <section aria-label="卡住时的下一步"><AnalysisCard row={latest} onQuestion={onQuestion} onFocus={onFocus}>{facts}</AnalysisCard></section>
+      : stuck && <section className="vg-card" aria-label="卡住时的下一步"><h3>还没有顺利通过</h3>{facts}{ask}</section>}
     {answers.filter(answer => !answer.analysisId || !merged.has(answer.analysisId)).map(answer => <article key={answer.id} className="vg-card vg-answer">
       <h3>{answer.contextLabel && <small className="vg-muted">关于 {answer.contextLabel}<br/></small>}{answer.question}</h3>
-      {answer.state === 'historical' && <p className="vg-notice">对话、项目文件或模型设置已有变化，下面保留的是当时的讲解。</p>}
+      {answer.state === 'historical' && <p className="vg-notice">这是之前的讲解，情况可能已经变了。</p>}
       <p className="vg-text">{answer.text}</p>
-      {answer.cached && <small className="vg-muted">沿用同一进展下已有的讲解，未重复生成。</small>}
     </article>)}
   </>;
 }
