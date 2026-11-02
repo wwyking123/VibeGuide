@@ -56,8 +56,8 @@ export function WorkPanels({ view, tab, busy, modelReady, run, background, onBac
         </article>;
       })}
     </section>}
-    {tab === 'history' && <section aria-label="历史要求与约定"><h3>你的要求与约定</h3>
-      <p className="vg-muted">保存你的原话和补充。提出明确修改时，会附带本项目相关历史；你也可以指定本次带哪些。历史讲解不会当成你的决定。</p>
+    {tab === 'settings' && <section className="vg-card" aria-label="历史记忆"><h3>历史记忆</h3>
+      <p className="vg-muted">你提过的要求和约定。提出修改时，会自动附带相关的几条；也可以自己指定。</p>
       {work?.historyIncomplete && <p className="vg-notice">部分历史记录未能完整读取，请明确选择本次约定。</p>}
       <div className="vg-actions"><button aria-pressed={background === undefined} onClick={() => onBackground(undefined)}>按相关性选取</button><button aria-pressed={background?.length === 0} onClick={() => onBackground([])}>这次不附带历史</button></div>
       {!work?.requirements.length && <p>还没有记录到明确要求。在主对话或侧栏提出修改后，这里会保留原话。</p>}
@@ -77,9 +77,7 @@ export function WorkPanels({ view, tab, busy, modelReady, run, background, onBac
       {work?.requirements.some(row => row.state === 'retired') && <button onClick={() => setShowRetired(value => !value)}>{showRetired ? '收起已停用约定' : '查看已停用约定'}</button>}
     </section>}
     {tab === 'structure' && <section aria-label="目标与改动影响">
-      {tab === 'structure' && <><h3>从你想达到的效果出发</h3><p className="vg-muted">在下方提问，例如“如果换手机也能看回答，需要改哪些部分？”或“这次实际改动会影响什么？”只解释，不会开始修改。</p>
-      <div className="vg-actions"><button onClick={() => onQuestion('这次实际改动会影响什么？')}>询问这次改动的影响</button></div></>}
-      {work?.analyses.filter(row => row.kind !== 'trouble').slice(-1).map(row => <AnalysisCard key={row.id} row={row} onQuestion={onQuestion} onFocus={onFocus}/>)}
+      {work?.analyses.filter(row => row.kind !== 'trouble' && !row.historical).slice(-1).map(row => <AnalysisCard key={row.id} row={row} onQuestion={onQuestion} onFocus={onFocus}/>)}
     </section>}
   </>;
 }

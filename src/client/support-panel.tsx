@@ -1,12 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Scope } from '../guide/contracts.js';
 import type { Preferences, SupportView } from '../guide/support-types.js';
-import { concepts } from '../guide/glossary.js';
 type Rpc = <T>(method: string, request: unknown, signal: AbortSignal) => Promise<T>;
 export function SupportPanel({ scope, rpc, onChanged }: { scope: Scope; rpc: Rpc; onChanged: () => void }) {
   const [view, setView] = useState<SupportView>(), [preferences, setPreferences] = useState<Preferences>();
   const [target, setTarget] = useState('project'), [daily, setDaily] = useState('100'), [turn, setTurn] = useState('20');
-  const [query, setQuery] = useState(''), [answer, setAnswer] = useState(''), [error, setError] = useState(''), [message, setMessage] = useState(''), [busy, setBusy] = useState(false);
+  const [error, setError] = useState(''), [message, setMessage] = useState(''), [busy, setBusy] = useState(false);
   const targetRef = useRef(target); targetRef.current = target;
   const active = useRef<AbortController>(), alive = useRef(true);
   const update = (next: SupportView) => { setView(next); setPreferences(targetRef.current === 'personal' ? next.personal : next.preferences); setDaily(String(next.budget.dailyCalls)); setTurn(String(next.budget.turnCalls)); };
@@ -20,14 +19,13 @@ export function SupportPanel({ scope, rpc, onChanged }: { scope: Scope; rpc: Rpc
     try {
       const result = await rpc<any>(method, { ...scope, ...fields }, AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]));
       if (!alive.current || controller.signal.aborted) return;
-      if (method === 'concept') setAnswer(result.text);
-      else { update(result); if (method === 'saveSupport') { setMessage(fields.target === 'personal' ? '已保存个人默认偏好。单独设置过的项目继续使用各自设置。' : '已保存。之后主动请求的讲解使用新设置，已有内容不会自动重写。'); onChanged(); } }
+      { update(result); if (method === 'saveSupport') { setMessage(fields.target === 'personal' ? '已保存个人默认偏好。单独设置过的项目继续使用各自设置。' : '已保存。之后主动请求的讲解使用新设置，已有内容不会自动重写。'); onChanged(); } }
     } catch (e) { if (alive.current && !controller.signal.aborted) setError(e instanceof Error ? e.message : '暂未保存，请刷新核对。'); }
     finally { if (active.current === controller) active.current = undefined; if (alive.current) setBusy(false); }
   }
   const save = (fields: Record<string, unknown>) => void request('saveSupport', { clientRequestId: crypto.randomUUID(), version: view?.version, ...fields });
   return <>
-    <details className="vg-card" aria-label="讲解设置与用量"><summary>讲解设置与用量</summary>
+    <section className="vg-card" aria-label="讲解设置与用量"><h3>讲解设置与用量</h3>
       <p className="vg-muted">只影响侧栏的讲解。保存设置本身不调用 AI。</p>
       {!view && <p>正在读取本地设置…</p>}
       {view && preferences && <>
@@ -52,13 +50,7 @@ export function SupportPanel({ scope, rpc, onChanged }: { scope: Scope; rpc: Rpc
         <p className="vg-muted">设为 0 暂停新的侧栏模型调用；已开始的讲解不受影响。此处统计调用尝试，不是账单或金额。主对话用量由 Harness 管理；读旧讲解和常用概念不受限制。切换会话不重置本项目每日计数。</p>
         <button disabled={busy} onClick={() => void request('supportView')}>刷新设置与用量</button>
       </>}
-    </details>
-    <details className="vg-card" aria-label="常用概念"><summary>常用概念 · 本地查看</summary>
-      <p className="vg-muted">解释技术对使用的影响；不判断当前项目的实现，不调用 AI。</p>
-      <label>查找概念<input value={query} maxLength={100} placeholder="例如：数据库、API、缓存" onChange={e => setQuery(e.target.value)}/></label>
-      <div className="vg-actions">{concepts.filter(row => `${row.title} ${row.aliases.join(' ')}`.toLowerCase().includes(query.trim().toLowerCase())).map(row => <button key={row.id} disabled={busy} onClick={() => void request('concept', { clientRequestId: crypto.randomUUID(), id: row.id })}>{row.title}</button>)}</div>
-      {answer && <p className="vg-text" role="status">{answer}</p>}
-    </details>
+    </section>
     {message && <p role="status" className="vg-notice">{message}</p>}{error && <p role="alert" className="vg-notice">{error}</p>}
   </>;
 }
