@@ -193,6 +193,15 @@ test('real adapter gates every independent call, applies preferences and records
   await assert.rejects(adapter.structured(f.snapshot, 'overview', {}, signal()), { code: 'budget_reached' }); assert.equal(calls, 1);
 });
 
+test('overview gets a larger output allowance, and a cut-off answer reports truncation instead of a vague failure', async t => {
+  const f = await fixture(t); let requested, finish = 'max-tokens';
+  class Assembler { push(chunk) { if (chunk.type === 'finish') this.finish = { kind: finish }; } blocks() { return [{ type: 'text', text: '{"summary":' }]; } }
+  const adapter = new HarnessAdapter({ llm: { prepareCall: async options => { requested = options.maxTokens; return { config: {}, async *stream() { yield { type: 'finish' }; } }; } } }, { BlockAssembler: Assembler, createUserMessage: value => value }, { store: f.store });
+  await assert.rejects(adapter.structured(f.snapshot, 'overview', {}, signal()), { code: 'explanation_truncated' });
+  assert.ok(requested >= 8000, String(requested));
+  await assert.rejects(adapter.structured(f.snapshot, 'trouble', {}, signal()), { code: 'explanation_truncated' }); assert.ok(requested >= 4000);
+});
+
 test('usage writes do not invalidate an unchanged requirement at dispatch, but actual requirement edits do', async t => {
   const f = await fixture(t), before = hash((await f.store.readProject(f.snapshot.scope.projectId)).requirementRevisions);
   await f.support.hit(f.snapshot, 'local-read', 'glossary');
