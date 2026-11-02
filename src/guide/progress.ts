@@ -8,7 +8,7 @@ import { resolve, dirname } from 'node:path';
 import { projectEvidence } from './project-scan.js';
 import type { ProjectEvidence } from './project-scan.js';
 import { executionOrigin } from './host/lineage.js';
-import { classifyInput } from './intent.js';
+import { isRequirement } from './intent.js';
 import { redact } from './privacy.js';
 
 export type NativeEvent = { seq: number; type: string; time?: number; data?: any; sourceEventSeqs?: number[]; surfaceOp?: string };
@@ -58,7 +58,7 @@ function jobFor(event: NativeEvent, calls: Map<string, NativeEvent>, scope: Scop
   if (event.type === 'user/message' && event.surfaceOp === 'append' && data?.source?.kind === 'user') {
     const content = Array.isArray(data.content) ? data.content.filter((part: any) => part?.type === 'text' && typeof part.text === 'string').map((part: any) => part.text).join('\n') : '';
     const stub = { choices: [], basis: 'original-user-input' } as unknown as GuideSnapshot;
-    if (content.trim() && content.length <= 12000 && classifyInput(content, stub).kind === 'modify') job.requirement = {
+    if (content.trim() && content.length <= 12000 && isRequirement(content, stub)) job.requirement = {
       id: `rq-${hash({ scope, seq: event.seq, messageId: data.id ?? null })}`, scope, text: content, createdAt: eventTime(event),
       source: { sessionId: scope.sessionId, seq: event.seq }, nativeMessageId: data.id, rpcId: data.source.rpcId,
     };

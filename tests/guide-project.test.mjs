@@ -39,13 +39,7 @@ async function fixture(t) {
   const req = (id, extra = {}) => ({ sessionId: 's1', projectId, clientRequestId: id, ...extra });
   const base = { sessionId: 's1', projectId };
   t.after(async () => { service.dispose(); await service.communication.close(); await project.close(); await store.close(); await rm(directory, { recursive: true, force: true }); });
-  const delivery = async () => {
-    const scope = scopeFor('s1'), content = '回答仅自己可见，不要让其他用户查看；最多保存21天。';
-    const row = { id: 'delivery-1', inputId: 'input', scope, requestId: 'delivery-1', contentDigest: hash(content), content,
-      userStatement: content, clarificationStatements: [], state: 'accepted', createdAt: '2026-10-28', updatedAt: '2026-10-28' };
-    await store.update(scope, record => record.deliveries.push(row)); return row;
-  };
-  return { directory, root, store, host, service, project, projectId, req, base, delivery,
+  return { directory, root, store, host, service, project, projectId, req, base,
     calls: () => calls, sends: () => sends, context: () => context, disable: () => { enabled = false; }, move: () => { moved = true; } };
 }
 
@@ -128,30 +122,6 @@ test('retired explanations cannot be resolved and concurrent stale corrections c
   ]);
   assert.equal(result.filter(row => row.status === 'fulfilled').length, 1);
   await assert.rejects(f.project.resolve(snapshot, { kind: 'explanation', id: answer.id, version: item.contextVersion }), { code: 'context_changed' });
-});
-
-test('scoped trial feedback is explicit, idempotent, versioned and never reports completion', async t => {
-  const f = await fixture(t), delivery = await f.delivery();
-  const card = await f.project.prepareReview(f.req('trial', { deliveryId: delivery.id }), signal());
-  assert.equal(card.requirement, delivery.content); assert.equal(f.calls(), 1);
-  assert.equal((await f.project.prepareReview(f.req('again', { deliveryId: delivery.id }), signal())).id, card.id);
-  const request = f.req('feedback', { cardId: card.id, stepId: card.steps[0].id, fileDigest: card.basis.digest, result: 'pass', note: '这一步符合预期' });
-  const feedback = await f.project.feedback(request, signal());
-  assert.deepEqual(await f.project.feedback(request, signal()), feedback);
-  const view = await f.project.view(f.base, signal());
-  assert.equal(view.trials[0].feedback.length, 1); assert.equal('completed' in view.trials[0], false); assert.equal(f.sends(), 0);
-  await writeFile(join(f.root, 'app.js'), 'a newer version');
-  await assert.rejects(f.project.feedback({ ...request, clientRequestId: 'old-version' }, signal()), { code: 'basis_changed' });
-  assert.equal((await f.project.view(f.base, signal())).trials[0].historical, true);
-  assert.equal(f.calls(), 1);
-});
-
-test('trial rejects unaccepted requests, wrong steps and another project', async t => {
-  const f = await fixture(t);
-  await assert.rejects(f.project.prepareReview(f.req('unknown', { deliveryId: 'no-such-request' }), signal()), { code: 'delivery_unavailable' });
-  const delivery = await f.delivery(), card = await f.project.prepareReview(f.req('trial', { deliveryId: delivery.id }), signal());
-  await assert.rejects(f.project.feedback(f.req('step', { cardId: card.id, stepId: 'wrong', fileDigest: card.basis.digest, result: 'pass' }), signal()), { code: 'review_unavailable' });
-  await assert.rejects(f.project.feedback(f.req('foreign', { sessionId: 'other', projectId: 'other-project', cardId: card.id, stepId: 's1', fileDigest: card.basis.digest, result: 'pass' }), signal()), { code: 'review_unavailable' });
 });
 
 test('late project overview cannot enter switched project; modes gate all reads', async t => {

@@ -1,7 +1,7 @@
 import { validSupport } from './support-types.js';
 import type { SupportRecord } from './support-types.js';
 import type { ContextRef, Explanation, FileBasis, ModelRoute, Scope } from './contracts.js';
-import type { Analysis, OutcomeBinding, RequirementRef, RequirementRevision, WorkView } from './work-types.js';
+import type { Analysis, Confirmation, OutcomeBinding, RequirementRef, RequirementRevision, WorkView } from './work-types.js';
 
 export type Responsibility = { id: string; title: string; purpose: string; impact: string; files: string[] };
 export type Overview = {
@@ -28,6 +28,7 @@ export type ProjectRecord = {
   version: 1; projectId: string; revision: number; support?: SupportRecord;
   overviews: Overview[]; annotations: Annotation[]; trials: TrialCard[]; feedback: TrialFeedback[];
   requirementRevisions: RequirementRevision[]; bindings: OutcomeBinding[]; analyses: Analysis[];
+  confirmations?: Confirmation[];
 };
 export type HistoryItem = Explanation & { contextVersion: string; annotation?: Annotation; fromCurrentSession: boolean };
 export type HistoryPage = { items: HistoryItem[]; nextOffset?: number; incomplete: boolean };
@@ -50,6 +51,7 @@ export function validProject(value: ProjectRecord, projectId: string): boolean {
     && Array.isArray(value.requirementRevisions) && value.requirementRevisions.length <= 1000
     && Array.isArray(value.bindings) && value.bindings.length <= 500
     && Array.isArray(value.analyses) && value.analyses.length <= 200
+    && (value.confirmations === undefined || Array.isArray(value.confirmations) && value.confirmations.length <= 1000 && value.confirmations.every(row => typeof row.id === 'string' && typeof row.requirement?.id === 'string' && typeof row.requirement?.version === 'string'))
     && value.requirementRevisions.every(row => typeof row.id === 'string' && typeof row.version === 'string' && typeof row.text === 'string' && ['active', 'retired'].includes(row.state) && ['related', 'project'].includes(row.applicability))
     && value.bindings.every(row => row.projectId === projectId && row.authority === 'owner-confirmed' && typeof row.trialId === 'string' && typeof row.basis?.digest === 'string' && Array.isArray(row.coverage))
     && value.analyses.every(row => row.projectId === projectId && ['changes', 'goal', 'trouble'].includes(row.kind) && typeof row.summary === 'string' && typeof row.basis?.digest === 'string' && Array.isArray(row.nodes) && Array.isArray(row.sources))

@@ -7,10 +7,10 @@ import type { FileBasis, GuideSnapshot } from './contracts.js';
 import type { HarnessAdapter } from './host/adapter.js';
 import type { GuideStore } from './store.js';
 import type { ProjectRecord } from './project-types.js';
-import type { Analysis, OutcomeBinding, RequirementRevision, WorkView } from './work-types.js';
+import type { Analysis, Confirmation, RequirementRef, RequirementRevision, WorkView } from './work-types.js';
 import { captureFiles, hash } from './files.js';
 import { Requirements, applyRequirementRevisions, requirementVersion, validateRequirementRefs } from './requirements.js';
-import { assessOutcome, currentChange, opKey } from './outcomes.js';
+import { assessOutcome, currentChange } from './outcomes.js';
 import { projectEvidence } from './project-scan.js';
 import { redact } from './privacy.js';
 
@@ -71,39 +71,20 @@ export class WorkService {
     });
     return result;
   }
-  async bind(value: unknown, signal: AbortSignal): Promise<OutcomeBinding> {
-    object(value, ['sessionId', 'projectId', 'clientRequestId', 'requirement', 'trialId', 'evidenceVersion', 'coverage', 'scopeConfirmed']);
-    requestId(value.clientRequestId); validateRequirementRefs([value.requirement]); text(value.trialId, 200); text(value.evidenceVersion, 100);
-    if (value.scopeConfirmed !== true || !Array.isArray(value.coverage) || !value.coverage.length || value.coverage.length > 6) throw new GuideError('invalid_input', '请先核对这些步骤覆盖你的要求，以及对应的实际改动和检查。');
-    const { snapshot, root } = await this.current(value, signal), requestDigest = hash(value), project = await this.store.readProject(snapshot.scope.projectId);
-    const prior = project.bindings.find(row => row.id === value.clientRequestId);
-    if (prior) { if (prior.requestDigest !== requestDigest) throw new GuideError('request_conflict', '同一核对请求不能更换内容。'); return prior; }
-    const { items, sessions, incomplete } = await this.requirements.list(snapshot.scope), ref = value.requirement as { id: string; version: string };
-    const requirement = items.find(row => row.id === ref.id && row.version === ref.version && row.state === 'active'), trial = project.trials.find(row => row.id === value.trialId);
-    if (!requirement || !trial || trial.requirementRef?.id !== ref.id || trial.requirementRef.version !== ref.version) throw new GuideError('requirement_changed', '要求或试用范围已经变化，请重新核对。');
-    const basis = await this.scan(root), outcome = assessOutcome(requirement, project, sessions, basis);
-    if (!basis.complete || trial.basis.digest !== basis.digest || outcome.trialId !== trial.id || outcome.evidenceVersion !== value.evidenceVersion) throw new GuideError('basis_changed', '文件或检查已经变化，请刷新核对最新记录。');
-    const coverage = value.coverage as OutcomeBinding['coverage'];
-    if (coverage.length !== trial.steps.length || new Set(coverage.map(row => row.stepId)).size !== coverage.length) throw new GuideError('invalid_input', '需要逐项核对完整试用范围。');
-    for (const row of coverage) {
-      object(row, ['stepId', 'changes', 'checks']);
-      if (!trial.steps.some(step => step.id === row.stepId)) throw new GuideError('invalid_input', '试用步骤无法对应。');
-      for (const [kind, refs] of [['change', row.changes], ['check', row.checks]] as const) {
-        if (!Array.isArray(refs) || !refs.length || refs.length > 20 || new Set(refs.map(opKey)).size !== refs.length) throw new GuideError('invalid_input', '每一步需要选择实际改动和对应检查。');
-        for (const candidate of refs) {
-          object(candidate, ['sessionId', 'id']); text(candidate.sessionId, 200); text(candidate.id, 300);
-          if (!outcome.candidates.some(item => opKey(item.ref) === opKey(candidate) && item.kind === kind && item.current)) throw new GuideError('basis_changed', '选中的改动或检查不再适用于当前版本。');
-        }
-      }
-    }
-    await this.current(value, signal);
-    const latest = await this.requirements.list(snapshot.scope), latestFiles = await this.scan(root);
-    if (requirementBasis(items) !== requirementBasis(latest.items) || assessOutcome(requirement, project, latest.sessions, latestFiles).evidenceVersion !== value.evidenceVersion) throw new GuideError('basis_changed', '核对期间有新的变化，请刷新。');
-    const result: OutcomeBinding = { id: value.clientRequestId, requestDigest, projectId: snapshot.scope.projectId, requirement: ref,
-      trialId: trial.id, basis, createdAt: new Date().toISOString(), version: hash({ requestDigest, basis: basis.digest }), coverage, authority: 'owner-confirmed' };
+  /** The owner's optional "没问题了" for one requirement version; a revised requirement is not covered by an older confirmation. */
+  async confirm(value: unknown, signal: AbortSignal): Promise<Confirmation> {
+    object(value, ['sessionId', 'projectId', 'clientRequestId', 'requirement']);
+    requestId(value.clientRequestId); validateRequirementRefs([value.requirement]);
+    const { snapshot } = await this.current(value, signal), requestDigest = hash(value), project = await this.store.readProject(snapshot.scope.projectId);
+    const prior = (project.confirmations ?? []).find(row => row.id === value.clientRequestId);
+    if (prior) { if (prior.requestDigest !== requestDigest) throw new GuideError('request_conflict', '同一确认请求不能更换内容。'); return prior; }
+    const ref = value.requirement as RequirementRef;
+    if (!(await this.requirements.list(snapshot.scope)).items.some(row => row.id === ref.id && row.version === ref.version && row.state === 'active')) throw new GuideError('requirement_changed', '这条要求已变化，请刷新后再确认。');
+    const result: Confirmation = { id: value.clientRequestId, requestDigest, requirement: ref, createdAt: new Date().toISOString() };
     await this.store.updateProject(snapshot.scope.projectId, state => {
-      if (hash(state.requirementRevisions) !== hash(project.requirementRevisions) || state.trials.filter(card => card.requirementRef?.id === ref.id).at(-1)?.id !== trial.id) throw new GuideError('requirement_changed', '要求已变化，请重新核对。');
-      if (!state.bindings.some(row => row.id === result.id)) state.bindings.push(result);
+      const rows = state.confirmations ??= [];
+      if (!rows.some(row => row.id === result.id)) rows.push(result);
+      state.confirmations = rows.slice(-1000);
     });
     return result;
   }

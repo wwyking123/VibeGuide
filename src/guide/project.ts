@@ -10,9 +10,8 @@ import type { HarnessAdapter } from './host/adapter.js';
 import { projectEvidence } from './project-scan.js';
 import { redact } from './privacy.js';
 import { WorkService, requirementBasis } from './work.js';
-import { validateRequirementRefs } from './requirements.js';
 import type { GuideStore } from './store.js';
-import type { Annotation, HistoryItem, HistoryPage, Overview, ProjectView, Responsibility, TrialCard, TrialFeedback } from './project-types.js';
+import type { Annotation, HistoryItem, HistoryPage, Overview, ProjectView, Responsibility } from './project-types.js';
 
 const now = () => new Date().toISOString();
 const sameProject = (a: GuideSnapshot, b: GuideSnapshot) => a.scope.projectId === b.scope.projectId && a.scope.sessionId === b.scope.sessionId && b.enabled;
@@ -245,61 +244,5 @@ export class ProjectService {
     return result;
   }
 
-  async prepareReview(value: unknown, signal: AbortSignal): Promise<TrialCard> {
-    object(value, ['sessionId', 'projectId', 'clientRequestId', 'deliveryId', 'requirement']);
-    if (value.requirement !== undefined) validateRequirementRefs([value.requirement]); else text(value.deliveryId, 200);
-    return this.generate(value, signal, async abort => {
-      const { snapshot, root } = await this.current(value, abort);
-      const knowledge = await this.work.requirements.list(snapshot.scope);
-      const ref = value.requirement as { id: string; version: string } | undefined;
-      const requirement = knowledge.items.find(row => row.state === 'active' && (ref ? row.id === ref.id && row.version === ref.version : row.deliveryId === value.deliveryId && row.scope.sessionId === snapshot.scope.sessionId));
-      const delivery = requirement?.deliveryId ? knowledge.deliveries.find(row => row.id === requirement.deliveryId) : undefined;
-      if (!requirement || (requirement.deliveryId && delivery?.state !== 'accepted')) throw new GuideError('delivery_unavailable', '请等这条要求送达主对话后，再准备试用。');
-      if (snapshot.model.status !== 'ready') throw new GuideError('model_unavailable', '请先选择可用模型。');
-      const basis = await this.scan(root), record = await this.store.readProject(snapshot.scope.projectId), requestDigest = hash(value);
-      const prior = record.trials.find(row => row.requestId === value.clientRequestId);
-      if (prior) { if (prior.requestDigest !== requestDigest) throw new GuideError('request_conflict', '同一生成请求不能更换内容。'); return prior; }
-      const cacheKey = hash({ requirement: { id: requirement.id, version: requirement.version }, basis: basis.digest, model: snapshot.model.route, preferences: snapshot.preferenceVersion, prompt: 'trial-2' });
-      const cached = record.trials.find(row => row.cacheKey === cacheKey);
-      if (cached) { await this.verify(snapshot, abort); await this.support.hit(snapshot, String(value.clientRequestId), 'cache'); return cached; }
-      const parsed = json(await this.host.structured(snapshot, 'trial', { originalRequirement: redact(requirement.text),
-        progress: snapshot.progress, limitations: snapshot.limitations }, abort));
-      if (!Array.isArray(parsed.steps) || !parsed.steps.length || parsed.steps.length > 6) invalid();
-      const steps = parsed.steps.map((step: any, index) => ({ id: `s${index + 1}`, action: generatedText(step?.action, 500), expected: generatedText(step?.expected, 500) }));
-      await this.verify(snapshot, abort);
-      const result: TrialCard = { id: randomUUID(), projectId: snapshot.scope.projectId, scope: snapshot.scope, deliveryId: delivery?.id ?? requirement.id, requirementRef: { id: requirement.id, version: requirement.version },
-        requestId: value.clientRequestId as string, requestDigest, cacheKey, requirement: requirement.text, basis, createdAt: now(), steps };
-      abort.throwIfAborted();
-      await this.store.updateProject(result.projectId, state => {
-        if (hash(state.requirementRevisions) !== hash(record.requirementRevisions)) throw new GuideError('requirement_changed', '生成期间约定已更新，请重新准备试用。');
-        state.trials.push(result);
-      });
-      return result;
-    });
-  }
-  async feedback(value: unknown, signal: AbortSignal): Promise<TrialFeedback> {
-    object(value, ['sessionId', 'projectId', 'clientRequestId', 'cardId', 'stepId', 'fileDigest', 'result', 'note']);
-    requestId(value.clientRequestId); text(value.cardId, 200); text(value.stepId, 100); text(value.fileDigest, 100);
-    if (value.result !== 'pass' && value.result !== 'fail') throw new GuideError('invalid_input', '请选择这一步的实际试用结果。');
-    if (value.note !== undefined) text(value.note, 2000);
-    const { snapshot, root } = await this.current(value, signal), requestDigest = hash(value);
-    const record = await this.store.readProject(snapshot.scope.projectId), prior = record.feedback.find(row => row.id === value.clientRequestId);
-    if (prior) { if (prior.requestDigest !== requestDigest) throw new GuideError('request_conflict', '同一反馈不能更换内容。'); return prior; }
-    const card = record.trials.find(row => row.id === value.cardId);
-    if (!card || !card.steps.some(step => step.id === value.stepId)) throw new GuideError('review_unavailable', '找不到这一步对应的试用记录。');
-    if (card.requirementRef && !(await this.work.requirements.list(snapshot.scope)).items.some(row => row.id === card.requirementRef!.id && row.version === card.requirementRef!.version && row.state === 'active')) throw new GuideError('requirement_changed', '这条要求已变化，请为新要求重新准备试用。');
-    const files = await this.scan(root);
-    if (card.basis.digest !== files.digest || value.fileDigest !== files.digest) throw new GuideError('basis_changed', '项目文件已经变化，请先刷新并为当前版本准备试用步骤。旧反馈会保留。');
-    await this.verify(snapshot, signal);
-    const result: TrialFeedback = { id: value.clientRequestId, requestDigest, cardId: card.id, stepId: value.stepId,
-      result: value.result, ...(value.note === undefined ? {} : { note: value.note as string }), createdAt: now() };
-    await this.store.updateProject(snapshot.scope.projectId, state => {
-      if (hash(state.requirementRevisions) !== hash(record.requirementRevisions)) throw new GuideError('requirement_changed', '保存时约定已经变化，请重新核对。');
-      const duplicate = state.feedback.find(row => row.id === result.id);
-      if (duplicate) { if (duplicate.requestDigest !== requestDigest) throw new GuideError('request_conflict', '这条反馈已经变化。'); return; }
-      state.feedback.push(result);
-    });
-    return result;
-  }
   async close() { this.closed = true; this.lifetime.abort(); await Promise.allSettled([...this.flights.values()].map(row => row.promise)); }
 }

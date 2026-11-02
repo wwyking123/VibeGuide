@@ -24,6 +24,7 @@ export type OutcomeBinding = {
   coverage: Array<{ stepId: string; changes: OperationRef[]; checks: OperationRef[] }>;
   authority: 'owner-confirmed';
 };
+export type Confirmation = { id: string; requestDigest: string; requirement: RequirementRef; createdAt: string };
 export type Outcome = {
   requirement: Requirement; trialId?: string; bindingVersion?: string; evidenceVersion: string;
   state: 'awaiting_delivery' | 'needs_scope' | 'needs_changes' | 'needs_checks' | 'check_failed' | 'needs_feedback' | 'feedback_failed' | 'stale' | 'complete';

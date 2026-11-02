@@ -64,6 +64,8 @@ export type Explanation = {
   choiceId?: string; choiceVersion?: string; promptVersion?: string;
   context?: ContextRef; contextLabel?: string; contextDigest?: string;
   analysisId?: string; workBasis?: string;
+  /** One concrete change the owner may send with one click; never sent without that click. */
+  suggestion?: string;
 };
 
 export type InputRequest = {
@@ -77,6 +79,7 @@ export type GuideInput = {
   state: 'pending' | 'done' | 'failed'; message?: string; replyTo?: string; resolvedBy?: string;
   explanationId?: string; deliveryId?: string; choiceId?: string; choiceVersion?: string;
   candidateModification?: boolean;
+  handoff?: HandoffSource;
   context?: ContextRef;
   background?: RequirementRef[];
 };
@@ -88,6 +91,8 @@ export type Delivery = {
   source?: Source & { messageId?: string }; notice?: string;
   background?: Background[]; requirementContent?: string;
 };
+export type HandoffSource = { kind: 'explanation'; id: string } | { kind: 'step'; id: string; index: number };
+export type HandoffRequest = { sessionId: string; projectId: string; clientRequestId: string; source: HandoffSource };
 export type InputResult = { input: GuideInput; explanation?: Explanation; delivery?: Delivery };
 
 export class GuideError extends Error {
@@ -106,6 +111,14 @@ export function text(value: unknown, max = 4000): asserts value is string {
 export function requestId(value: unknown): asserts value is string {
   text(value, 100);
   if (!/^[a-zA-Z0-9][a-zA-Z0-9_-]*$/.test(value)) throw new GuideError('invalid_input', '请求标识无效。');
+}
+export function handoffSource(value: unknown): asserts value is HandoffSource {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new GuideError('invalid_input', '请选择要发送的改法。');
+  const row = value as Record<string, unknown>;
+  if (row.kind === 'explanation') object(row, ['kind', 'id']);
+  else if (row.kind === 'step') { object(row, ['kind', 'id', 'index']); if (!Number.isSafeInteger(row.index) || (row.index as number) < 0 || (row.index as number) > 2) throw new GuideError('invalid_input', '请选择要发送的建议。'); }
+  else throw new GuideError('invalid_input', '请选择要发送的改法。');
+  text(row.id, 200);
 }
 export function contextRef(value: unknown): asserts value is ContextRef {
   object(value, ['kind', 'id', 'version']);

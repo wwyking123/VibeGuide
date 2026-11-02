@@ -2,7 +2,7 @@ import { lookupConcept, conceptText } from './glossary.js';
 import { randomUUID } from 'node:crypto';
 import { GuideError, contextRef, object, requestId, text } from './contracts.js';
 import type { AskRequest, Explanation, GuideSnapshot } from './contracts.js';
-import { digest, HarnessAdapter } from './host/adapter.js';
+import { digest, HarnessAdapter, splitSuggestion } from './host/adapter.js';
 import { CommunicationService } from './communication.js';
 import { ProjectService } from './project.js';
 import { analysisKind, requirementBasis } from './work.js';
@@ -44,6 +44,11 @@ export class GuideService {
       if (saved?.state === 'historical') return { ...result, explanation: { ...result.explanation, state: 'historical' as const } };
     }
     return result;
+  }
+
+  async handoff(value: unknown, signal: AbortSignal) {
+    if (!this.communication || this.disposed) throw new GuideError('unavailable', '当前发送服务尚未就绪，请稍后刷新。');
+    return this.communication.handoff(value, signal);
   }
 
   async ask(value: unknown, signal: AbortSignal): Promise<Explanation> {
@@ -126,16 +131,16 @@ export class GuideService {
     if (request.context && !context) throw new GuideError('context_changed', '当前无法读取这条关联内容。');
     const contextDigest = request.context ? digest(context) : undefined;
     const cacheKey = digest({ scope: snapshot.scope, basis: snapshot.basis, preferenceVersion: snapshot.preferenceVersion, question: request.question,
-      choiceId: request.choiceId, choiceVersion: request.choiceVersion, route: snapshot.model.route, context: request.context, contextDigest, prompt: request.context ? 'p3-1' : 'p1-1' });
+      choiceId: request.choiceId, choiceVersion: request.choiceVersion, route: snapshot.model.route, context: request.context, contextDigest, prompt: request.context ? 'p3-2' : 'p1-2' });
     const memoryCached = this.cache.get(cacheKey);
     const cached = (memoryCached && !snapshot.excludedExplanationIds?.includes(memoryCached.id) ? memoryCached : undefined) ?? snapshot.explanations?.find(answer => answer.basis === snapshot.basis
-      && answer.preferenceVersion === snapshot.preferenceVersion && answer.contextDigest === contextDigest && answer.state === 'current' && answer.question === request.question && answer.promptVersion === (request.context ? 'p3-1' : 'p1-1') && digest(answer.context ?? null) === digest(request.context ?? null)
+      && answer.preferenceVersion === snapshot.preferenceVersion && answer.contextDigest === contextDigest && answer.state === 'current' && answer.question === request.question && answer.promptVersion === (request.context ? 'p3-2' : 'p1-2') && digest(answer.context ?? null) === digest(request.context ?? null)
       && answer.choiceId === request.choiceId && answer.choiceVersion === request.choiceVersion
       && digest(answer.model) === digest(snapshot.model.status === 'ready' ? snapshot.model.route : null));
     if (cached) { await this.project?.support.hit(snapshot, request.clientRequestId, 'cache'); return { ...cached, cached: true }; }
     const focused = request.choiceId ? { ...snapshot,
       choices: snapshot.choices.filter(choice => choice.id === request.choiceId) } : snapshot;
-    const answer = await this.host.explain({ ...focused, context }, request.question, signal);
+    const { text: answer, suggestion } = splitSuggestion(await this.host.explain({ ...focused, context }, request.question, signal));
     signal.throwIfAborted();
     const current = await this.getSnapshot({ sessionId: request.sessionId }, signal);
     if (current.scope.projectId !== snapshot.scope.projectId) throw new GuideError('basis_changed', '当前会话已切换项目，请在新项目中重新提问。');
@@ -144,7 +149,8 @@ export class GuideService {
       id: randomUUID(), scope: snapshot.scope, preferenceVersion: snapshot.preferenceVersion, question: request.question, text: answer, basis: snapshot.basis,
       state: current.basis === snapshot.basis && current.preferenceVersion === snapshot.preferenceVersion && (!request.context || digest(currentContext) === contextDigest) ? 'current' : 'historical',
       model: snapshot.model.route, createdAt: new Date().toISOString(), cached: false,
-      choiceId: request.choiceId, choiceVersion: request.choiceVersion, promptVersion: request.context ? 'p3-1' : 'p1-1', context: request.context, contextLabel: context?.label, contextDigest,
+      choiceId: request.choiceId, choiceVersion: request.choiceVersion, promptVersion: request.context ? 'p3-2' : 'p1-2', context: request.context, contextLabel: context?.label, contextDigest,
+      ...(suggestion && !request.choiceId ? { suggestion } : {}),
     };
     await this.host.saveExplanation?.(result);
     if (result.state === 'current') {

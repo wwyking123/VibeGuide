@@ -150,12 +150,10 @@ export async function apply(ctx: any, config: Config) {
         return await service.project.annotate(request, signal);
       } catch (e) { throw failure(e); }
     }
-    async prepareReview(request: unknown, signal: AbortSignal) {
+    async handoff(request: unknown, signal: AbortSignal) {
       this.owner();
-      try {
-        if (!service.project) throw new GuideError('unavailable', '项目记录服务尚未就绪。');
-        return await service.project.prepareReview(request, signal);
-      } catch (e) { throw failure(e); }
+      try { return await service.handoff(request, signal); }
+      catch (e) { throw failure(e); }
     }
     async reviseRequirement(request: unknown, signal: AbortSignal) {
       this.owner();
@@ -164,11 +162,11 @@ export async function apply(ctx: any, config: Config) {
         return await service.project.work.revise(request, signal);
       } catch (e) { throw failure(e); }
     }
-    async bindOutcome(request: unknown, signal: AbortSignal) {
+    async confirmRequirement(request: unknown, signal: AbortSignal) {
       this.owner();
       try {
         if (!service.project) throw new GuideError('unavailable', '项目记录服务尚未就绪。');
-        return await service.project.work.bind(request, signal);
+        return await service.project.work.confirm(request, signal);
       } catch (e) { throw failure(e); }
     }
     async analyze(request: unknown, signal: AbortSignal) {
@@ -178,19 +176,12 @@ export async function apply(ctx: any, config: Config) {
         return await service.project.analyze(request, signal);
       } catch (e) { throw failure(e); }
     }
-    async feedback(request: unknown, signal: AbortSignal) {
-      this.owner();
-      try {
-        if (!service.project) throw new GuideError('unavailable', '项目记录服务尚未就绪。');
-        return await service.project.feedback(request, signal);
-      } catch (e) { throw failure(e); }
-    }
   }
   function failure(error: unknown) {
     return new RemoteError(`vibeguide/${error instanceof GuideError ? error.code : 'unavailable'}`,
       error instanceof GuideError ? error.message : '暂时无法读取或解释当前状态，主对话开发不受影响。', {});
   }
-  for (const method of ['concept', 'compareStructure', 'supportView', 'saveSupport', 'getSnapshot', 'ask', 'submit', 'projectView', 'overview', 'history', 'annotate', 'prepareReview', 'feedback', 'reviseRequirement', 'bindOutcome', 'analyze'] as const) {
+  for (const method of ['concept', 'compareStructure', 'supportView', 'saveSupport', 'getSnapshot', 'ask', 'submit', 'projectView', 'overview', 'history', 'annotate', 'handoff', 'reviseRequirement', 'confirmRequirement', 'analyze'] as const) {
     Remote({ resources: { session: ({ request }: any) => request?.sessionId } })(GuideGateway.prototype[method], {
       kind: 'method', name: method, static: false, private: false,
       addInitializer: (fn: (this: any) => void) => initializers.push(fn),

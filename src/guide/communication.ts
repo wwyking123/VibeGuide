@@ -1,15 +1,16 @@
-import { GuideError, contextRef, object, requestId, text } from './contracts.js';
-import type { ContextRef, Delivery, Explanation, GuideInput, InputRequest, InputResult, Scope } from './contracts.js';
+import { GuideError, contextRef, handoffSource, object, requestId, text } from './contracts.js';
+import type { ContextRef, Delivery, Explanation, GuideInput, HandoffRequest, HandoffSource, InputRequest, InputResult, Scope } from './contracts.js';
 import type { HarnessAdapter } from './host/adapter.js';
 import { hash } from './files.js';
 import { GuideStore } from './store.js';
-import { classifyInput, modificationContent } from './intent.js';
+import { modificationContent, routeQuestion } from './intent.js';
 import { Requirements, validateRequirementRefs, withBackground } from './requirements.js';
+import type { GuideRecord } from './store.js';
 
 const now = () => new Date().toISOString();
 type Explain = (request: { sessionId: string; clientRequestId: string; basis: string; question: string; context?: ContextRef }, signal: AbortSignal) => Promise<Explanation>;
 
-/** Durable admission and delivery. Model output is never a dispatch instruction. */
+/** Ask-only sidebar input, plus durable delivery of one-click handoffs. Nothing is sent without the owner's click. */
 export class CommunicationService {
   private flights = new Map<string, { digest: string; promise: Promise<InputResult> }>();
   private lanes = new Map<string, Promise<unknown>>();
@@ -66,39 +67,15 @@ export class CommunicationService {
         }
         return prior;
       }
-      const reply = request.replyTo ? record.inputs.find(row => row.id === request.replyTo) : undefined;
-      if (request.replyTo && (!reply || reply.kind !== 'clarify' || reply.resolvedBy)) {
-        throw new GuideError('clarification_changed', '这次澄清已经结束或不存在，请刷新后提出新的要求。');
-      }
-      const statements = [...(reply?.statements ?? []), request.statement];
-      if (statements.join('\n').length > 12000 || statements.length > 12) throw new GuideError('input_too_long', '这次补充内容过长，尚未转交。请重新整理为一条完整要求。');
-      let decision = classifyInput(request.statement, snapshot, reply);
-      if (decision.kind === 'modify' && snapshot.model.status !== 'ready') throw new GuideError('model_unavailable', '请先在主对话选择模型，这次要求尚未保存或发送。');
-      if ((snapshot.basis !== request.basis && decision.kind === 'redirect')
-        || (reply && (reply.candidateModification || decision.kind === 'modify') && (snapshot.basis !== request.basis || snapshot.basis !== reply.basis))) {
-        decision = { kind: 'clarify', message: '原题或进展已经变化，请核对当前内容后说明希望达到的效果，旧选项不会自动套到新问题上。' };
-      }
-      const input: GuideInput = { id: request.clientRequestId, digest, statement: request.statement, statements, basis: request.basis,
+      let decision = routeQuestion(request.statement, snapshot);
+      if (snapshot.basis !== request.basis && decision.kind === 'redirect') decision = { kind: 'redirect', message: '原题已经变化，请回主对话查看当前问题后作答。' };
+      const input: GuideInput = { id: request.clientRequestId, digest, statement: request.statement, statements: [request.statement], basis: request.basis,
         createdAt: now(), ...decision, state: decision.kind === 'explain' ? 'pending' : 'done', replyTo: request.replyTo, context: request.context, background: request.background };
-      let delivery: Delivery | undefined;
-      if (decision.kind === 'modify') {
-        const id = `vg-${hash({ scope, id: input.id })}`, requirementContent = modificationContent(statements);
-        const background = await this.requirements.background(scope, requirementContent, request.background ?? (() => { let parent = reply; while (parent) { if (parent.background !== undefined) return parent.background; parent = record.inputs.find(row => row.id === parent!.replyTo); } return undefined; })());
-        const content = withBackground(requirementContent, background);
-        delivery = { id, inputId: input.id, scope, requestId: id, contentDigest: hash(content), content, requirementContent, background,
-          userStatement: statements[0], clarificationStatements: statements.slice(1), createdAt: now(), updatedAt: now(), state: 'pending' };
-        input.deliveryId = id;
-      }
       signal.throwIfAborted();
-      // Input, clarification consumption and outgoing message are committed together before any host call.
-      await this.store.update(scope, state => {
-        state.inputs.push(input); if (delivery) state.deliveries.push(delivery);
-        if (reply) state.inputs.find(row => row.id === reply.id)!.resolvedBy = input.id;
-      });
+      await this.store.update(scope, state => { state.inputs.push(input); });
       return input;
     });
     this.scopes.set(hash(scope), scope);
-    if (input.kind === 'modify') { this.kick(scope); return this.result(scope, input.id); }
     if (input.kind !== 'explain' || input.state === 'done') {
       const result = await this.result(scope, input.id);
       if (result.explanation) {
@@ -118,10 +95,82 @@ export class CommunicationService {
     } catch (error) {
       await this.store.update(scope, state => {
         const target = state.inputs.find(row => row.id === input.id)!;
-        target.state = 'failed'; target.message = '这次讲解未完成，没有转交修改。可以结合当前进展重新提问。';
+        target.state = 'failed'; target.message = '这次讲解未完成，可以重新提问。';
       });
       throw error;
     }
+  }
+  /** The owner's click authorizes sending; the sidebar model only writes the wording, which counts as the owner's request. */
+  async handoff(value: unknown, signal: AbortSignal): Promise<InputResult> {
+    object(value, ['sessionId', 'projectId', 'clientRequestId', 'source']);
+    text(value.sessionId, 200); text(value.projectId, 100); requestId(value.clientRequestId); handoffSource(value.source);
+    if (this.stopped) throw new GuideError('unavailable', '侧栏服务正在关闭，请重开后查看记录。');
+    signal.throwIfAborted();
+    const request = value as HandoffRequest, scope = { sessionId: request.sessionId, projectId: request.projectId };
+    const key = hash({ scope, id: request.clientRequestId }), digest = hash({ scope, id: request.clientRequestId, source: request.source }), prior = this.flights.get(key);
+    if (prior) {
+      if (prior.digest !== digest) throw new GuideError('request_conflict', '同一请求不能更换内容，请先核对原来的发送记录。');
+      return prior.promise;
+    }
+    const promise = this.relay(request, scope, digest, AbortSignal.any([signal, this.lifetime.signal])); this.flights.set(key, { digest, promise });
+    try { return await promise; } finally { this.flights.delete(key); }
+  }
+  private async material(scope: Scope, record: GuideRecord, source: HandoffSource) {
+    if (source.kind === 'explanation') {
+      const row = record.explanations.find(item => item.id === source.id);
+      if (!row?.suggestion) throw new GuideError('context_changed', '这条讲解没有可发送的改法，请刷新后再试。');
+      return { label: row.suggestion, text: row.suggestion, source: { suggestion: row.suggestion, question: row.question, explanation: row.text.slice(0, 4000) } };
+    }
+    const analysis = (await this.store.readProject(scope.projectId)).analyses.find(row => row.id === source.id && row.scope.sessionId === scope.sessionId);
+    const step = analysis?.nextSteps?.[source.index];
+    if (!analysis || !step) throw new GuideError('context_changed', '这条建议已不可用，请刷新后再试。');
+    return { label: step.label, text: step.request, source: { suggestion: step.request, reason: step.reason, situation: analysis.summary } };
+  }
+  private async relay(request: HandoffRequest, scope: Scope, digest: string, signal: AbortSignal): Promise<InputResult> {
+    const admitted = await this.serial(scope, async () => {
+      const snapshot = await this.host.snapshot(scope.sessionId, signal);
+      if (!snapshot.enabled) throw new GuideError('mode_required', '请回主对话选择 VibeGuide 模式。');
+      if (snapshot.scope.projectId !== scope.projectId || snapshot.scope.sessionId !== scope.sessionId) throw new GuideError('scope_changed', '会话已切换项目，这次没有发送。');
+      scope = snapshot.scope;
+      const record = await this.store.read(scope), prior = record.inputs.find(row => row.id === request.clientRequestId);
+      if (prior) {
+        if (prior.digest !== digest) throw new GuideError('request_conflict', '同一请求不能更换内容，请先核对原来的发送记录。');
+        return undefined;
+      }
+      if (snapshot.model.status !== 'ready') throw new GuideError('model_unavailable', '请先在主对话选择模型，这次没有发送。');
+      const material = await this.material(scope, record, request.source);
+      const input: GuideInput = { id: request.clientRequestId, digest, statement: material.label, statements: [material.label], basis: snapshot.basis,
+        createdAt: now(), kind: 'modify', state: 'pending', handoff: request.source };
+      signal.throwIfAborted();
+      await this.store.update(scope, state => { state.inputs.push(input); });
+      return { input, snapshot, material };
+    });
+    this.scopes.set(hash(scope), scope);
+    if (!admitted) return this.result(scope, request.clientRequestId);
+    const { input, snapshot, material } = admitted;
+    try {
+      const background = await this.requirements.background(scope, material.text);
+      const composed = (await this.host.compose(snapshot, { ...material.source, constraints: background.map(row => row.text) }, signal)).trim();
+      if (!composed || composed.length > 4000) throw new GuideError('invalid_handoff', '这次没有写出可发送的要求，没有发送。可以再点一次。');
+      signal.throwIfAborted();
+      const id = `vg-${hash({ scope, id: input.id })}`, content = withBackground(composed, background);
+      const delivery: Delivery = { id, inputId: input.id, scope, requestId: id, contentDigest: hash(content), content, requirementContent: composed, background,
+        userStatement: composed, clarificationStatements: [], createdAt: now(), updatedAt: now(), state: 'pending' };
+      // The written request and its outgoing record are committed together before any host call.
+      await this.serial(scope, () => this.store.update(scope, state => {
+        const target = state.inputs.find(row => row.id === input.id);
+        if (!target || target.state !== 'pending' || target.deliveryId) throw new GuideError('delivery_changed', '发送记录已变化，请刷新核对。');
+        state.deliveries.push(delivery); target.deliveryId = id; target.state = 'done';
+      }));
+    } catch (error) {
+      await this.store.update(scope, state => {
+        const target = state.inputs.find(row => row.id === input.id);
+        if (target?.state === 'pending' && !target.deliveryId) { target.state = 'failed'; target.message = error instanceof GuideError ? error.message : '这次没有发送。可以再点一次。'; }
+      }).catch(() => {});
+      throw error;
+    }
+    this.kick(scope);
+    return this.result(scope, input.id);
   }
   kick(scope: Scope) {
     if (this.stopped) return;
@@ -209,6 +258,8 @@ export class CommunicationService {
         await this.store.update(scope, state => {
           for (const input of state.inputs) if (input.kind === 'explain' && input.state === 'pending') {
             input.state = 'failed'; input.message = '上次讲解未完成；重新打开不会自动生成，可以重新提问。';
+          } else if (input.kind === 'modify' && input.state === 'pending' && !input.deliveryId) {
+            input.state = 'failed'; input.message = '上次还没写好就中断了，没有发送。可以再点一次。';
           }
           for (const delivery of state.deliveries) if (delivery.state === 'dispatching') {
             delivery.state = 'unknown'; delivery.notice = '上次发送已开始，正在核对接收结果，不会自动重发。'; delivery.updatedAt = now();

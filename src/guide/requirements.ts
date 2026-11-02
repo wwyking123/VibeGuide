@@ -72,7 +72,7 @@ export class Requirements {
   async background(scope: Scope, statement: string, selected?: RequirementRef[]): Promise<Background[]> {
     const { items, incomplete } = await this.list(scope);
     if (selected) validateRequirementRefs(selected);
-    if (incomplete && selected === undefined && items.some(row => row.scope.sessionId !== scope.sessionId)) throw new GuideError('history_incomplete', '历史要求未能完整读取。请在“了解过的”中明确选择本次需要带上的约定后重试。');
+    if (incomplete && selected === undefined && items.some(row => row.scope.sessionId !== scope.sessionId)) throw new GuideError('history_incomplete', '历史约定未能完整读取，这次没有发送。请稍后再试。');
     const chosen = selected === undefined
       ? items.filter(row => row.state === 'active' && row.scope.sessionId !== scope.sessionId && (row.applicability === 'project' || relatedRequirement(row.text, statement)))
       : selected.map(ref => {
@@ -84,7 +84,7 @@ export class Requirements {
     if (selected === undefined) for (const row of items) if (row.state === 'active' && row.applicability === 'project' && !chosen.some(item => item.id === row.id)) chosen.push(row);
     const result = chosen.map(row => ({ id: row.id, version: row.version, text: row.text, source: row.source,
       reason: selected ? 'selected' as const : row.applicability === 'project' ? 'project' as const : 'related' as const }));
-    if (result.length > 40 || result.reduce((size, row) => size + row.text.length, 0) > 16000) throw new GuideError('history_too_large', '相关历史较多，尚未发送。请在“了解过的”选择本次需要带上的约定，或停用不再适用的旧要求。');
+    if (result.length > 40 || result.reduce((size, row) => size + row.text.length, 0) > 16000) throw new GuideError('history_too_large', '相关历史约定太多，这次没有发送。请在设置的“历史记忆”里停用不再适用的旧约定。');
     return result;
   }
   async validateBackground(scope: Scope, refs: Background[]) {

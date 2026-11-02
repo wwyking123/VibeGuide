@@ -117,6 +117,9 @@ if (!process.versions.electron) {
     let enterMain, releaseMain;
     const mainEntered = new Promise(resolve => { enterMain = resolve; });
     const mainGate = new Promise(resolve => { releaseMain = resolve; });
+    let composeCalls = 0;
+    const fixtureSuggestions = { P2_SUGGEST: '请把标题改成每日思考，保留 21 天规则，不要公开回答。', P2_IDLE_SUGGEST: '请把标题改成每天一个问题。',
+      P4_SUGGEST: '请把页面标题改成每天一个问题，保留回答保存。P4_NATIVE_TITLE' };
     let enterCancelledCall;
     const cancelledCallEntered = new Promise(resolve => { enterCancelledCall = resolve; });
     root.llm.registerAdapter(['vibeguide-fixture'], {
@@ -128,6 +131,13 @@ if (!process.versions.electron) {
         model: { provider, id: model, name: 'Fixture' },
         async *stream(options) {
           const isExplanation = typeof options.system === 'string' && options.system.includes('只读理解助手');
+          if (typeof options.system === 'string' && options.system.includes('替用户给主开发 AI 写一条修改要求')) {
+            modelCalls++; composeCalls++;
+            assert.equal(options.tools?.length ?? 0, 0, 'composing must not carry execution tools');
+            const source = JSON.parse(options.messages.at(-1).content.find(part => part.type === 'text').text);
+            yield { type: 'text-delta', index: 0, text: source.suggestion };
+            yield { type: 'finish', reason: { kind: 'stop' } }; return;
+          }
           if (isExplanation) {
             modelCalls++;
             yield { type: 'usage', usage: { inputTokens: 120, outputTokens: 40, cacheReadTokens: 30 } };
@@ -195,7 +205,8 @@ if (!process.versions.electron) {
             }
           }
           options.signal.throwIfAborted();
-          yield { type: 'text-delta', index: 0, text: '这是隔离验证使用的固定回答：保存在本机意味着换手机后不能自动看到之前的回答。需要跨设备时，再考虑账号与云端保存。' };
+          const suggest = isExplanation && Object.entries(fixtureSuggestions).find(([token]) => JSON.stringify(options.messages).includes(token));
+          yield { type: 'text-delta', index: 0, text: '这是隔离验证使用的固定回答：保存在本机意味着换手机后不能自动看到之前的回答。需要跨设备时，再考虑账号与云端保存。' + (suggest ? `\n\n【可发送的改法】${suggest[1]}` : '') };
           yield { type: 'finish', reason: { kind: 'stop' } };
         },
       }),
@@ -312,7 +323,7 @@ if (!process.versions.electron) {
     assert.ok(explainedChoice.text);
     assert.equal(root.agents.get(deliverySessionId).status, 'running', 'explaining must not answer or cancel the main question');
 
-    // P2 public input endpoint: questions and original answers never queue a task.
+    // P2 public input endpoint: the input box only explains; one click sends a written change.
     const p2Snapshot = await invoke('getSnapshot', { sessionId: deliverySessionId });
     const p2Request = (id, statement, extra = {}) => ({ sessionId: deliverySessionId, projectId: p2Snapshot.scope.projectId,
       clientRequestId: id, statement, basis: p2Snapshot.basis, ...extra });
@@ -320,25 +331,30 @@ if (!process.versions.electron) {
     const p2Answer = await invoke('submit', p2Request('p2-question', '为什么不用云端？'));
     assert.equal(p2Answer.input.kind, 'explain'); assert.ok(p2Answer.explanation.text);
     assert.equal((await invoke('submit', p2Request('p2-original-answer', '选第二个'))).input.kind, 'redirect');
+    assert.equal((await invoke('submit', p2Request('p2-typed-change', '把标题改成每日思考，保留 21 天规则，不要公开回答。'))).input.kind, 'explain', 'typed changes are only explained');
     assert.deepEqual((await root.sessionQuery.readSession(deliverySessionId)).events, mainEventsBeforeP2);
     assert.equal((await invoke('getSnapshot', { sessionId: deliverySessionId })).choices.length, 1);
-    const p2Modify = p2Request('p2-queued-change', '把标题改成每日思考，保留 21 天规则，不要公开回答。');
-    const p2Pair = await Promise.all([invoke('submit', p2Modify), invoke('submit', p2Modify)]);
-    assert.equal(p2Pair[0].delivery.id, p2Pair[1].delivery.id);
+    const p2Suggested = await invoke('ask', { sessionId: deliverySessionId, clientRequestId: 'p2-suggest', basis: (await invoke('getSnapshot', { sessionId: deliverySessionId })).basis, question: '标题怎么改更好？P2_SUGGEST' });
+    assert.equal(p2Suggested.suggestion, fixtureSuggestions.P2_SUGGEST); assert.doesNotMatch(p2Suggested.text, /可发送的改法/);
+    assert.deepEqual((await root.sessionQuery.readSession(deliverySessionId)).events, mainEventsBeforeP2, 'a suggestion alone sends nothing');
+    const p2Modify = { sessionId: deliverySessionId, projectId: p2Snapshot.scope.projectId, clientRequestId: 'p2-queued-change', source: { kind: 'explanation', id: p2Suggested.id } };
+    const p2Pair = await Promise.all([invoke('handoff', p2Modify), invoke('handoff', p2Modify)]);
+    assert.equal(p2Pair[0].delivery.id, p2Pair[1].delivery.id); assert.equal(composeCalls, 1);
     let p2Queued;
     for (let i = 0; i < 100; i++) {
       p2Queued = (await invoke('getSnapshot', { sessionId: deliverySessionId })).deliveries.find(row => row.id === p2Pair[0].delivery.id);
       if (p2Queued.state === 'queued') break;
       await new Promise(resolve => setTimeout(resolve, 25));
     }
-    assert.equal(p2Queued.state, 'queued'); assert.equal(p2Queued.content, p2Modify.statement);
+    assert.equal(p2Queued.state, 'queued'); assert.equal(p2Queued.content, fixtureSuggestions.P2_SUGGEST);
     assert.equal((await invoke('getSnapshot', { sessionId: deliverySessionId })).choices.length, 1, 'queued change does not answer or interrupt original question');
     const p2IdleSession = (await root.sessionController.create({ workspaceId: workspace.id, agentPreset: 'vibeguide' })).sessionId;
     await root.sessionController.selectModel({ sessionId: p2IdleSession, provider: 'vibeguide-fixture', model: 'fixture' });
     const p2IdleView = await invoke('getSnapshot', { sessionId: p2IdleSession });
-    const p2IdleRequest = { sessionId: p2IdleSession, projectId: p2IdleView.scope.projectId, basis: p2IdleView.basis,
-      clientRequestId: 'p2-idle-change', statement: '把标题改成每天一个问题。' };
-    const p2IdleResult = await invoke('submit', p2IdleRequest);
+    const p2IdleAnswer = await invoke('ask', { sessionId: p2IdleSession, clientRequestId: 'p2-idle-suggest', basis: p2IdleView.basis, question: '标题要不要改？P2_IDLE_SUGGEST' });
+    const p2IdleStatement = fixtureSuggestions.P2_IDLE_SUGGEST;
+    const p2IdleRequest = { sessionId: p2IdleSession, projectId: p2IdleView.scope.projectId, clientRequestId: 'p2-idle-change', source: { kind: 'explanation', id: p2IdleAnswer.id } };
+    const p2IdleResult = await invoke('handoff', p2IdleRequest);
     let p2Accepted;
     for (let i = 0; i < 100; i++) {
       p2Accepted = (await invoke('getSnapshot', { sessionId: p2IdleSession })).deliveries.find(row => row.id === p2IdleResult.delivery.id);
@@ -373,30 +389,23 @@ if (!process.versions.electron) {
     const p3Follow = await invoke('submit', { ...p3Scope, clientRequestId: 'p3-follow', basis: p3FollowView.basis,
       statement: '换手机有什么影响？', context: { kind: 'explanation', id: answer.id, version: p3Corrected.contextVersion } });
     assert.equal(p3Follow.input.kind, 'explain'); assert.equal(p3Follow.explanation.context.id, answer.id);
-    const p3Trial = await invoke('prepareReview', { ...p3Scope, clientRequestId: 'p3-trial', deliveryId: p2Accepted.id });
-    assert.equal(p3Trial.requirement, p2IdleRequest.statement);
-    const p3FeedbackRequest = { ...p3Scope, clientRequestId: 'p3-feedback', cardId: p3Trial.id, stepId: p3Trial.steps[0].id,
-      fileDigest: p3Trial.basis.digest, result: 'pass', note: '固定验证：只确认这一步的反馈保存' };
-    await invoke('feedback', p3FeedbackRequest); await invoke('feedback', p3FeedbackRequest);
-    assert.equal((await invoke('projectView', p3Scope)).trials[0].feedback.length, 1);
     await writeFile(join(projectDirectory, 'app.js'), 'localStorage.setItem("answer", "later fixture");');
     const p3Changed = await invoke('projectView', p3Scope);
     assert.equal(p3Changed.overview.historical, true); assert.equal(p3Changed.overview.changedNodes.length, 1);
-    assert.equal(p3Changed.trials[0].historical, true);
-    await assert.rejects(invoke('feedback', { ...p3FeedbackRequest, clientRequestId: 'p3-stale-feedback' }), /文件已经变化/);
-    assert.equal((await p2NativeMessages()).length, 1, 'project explanations and trial feedback never dispatch development');
+    assert.equal((await p2NativeMessages()).length, 1, 'project explanations never dispatch development');
     console.log(JSON.stringify({ explicitOverview: true, overviewCached: true, importEdges: true, crossSessionHistory: true,
-      correctionPersists: true, contextualFollowup: true, scopedTrialFeedback: true, staleFeedbackRejected: true,
+      correctionPersists: true, contextualFollowup: true,
       openingProjectModelCalls: 0, realModelQualityEvaluated: false }));
 
     // P4: a real host turn performs tools; fixed model output does not substitute for native receipts.
-    for (const method of ['reviseRequirement', 'bindOutcome', 'analyze']) await assert.rejects(root.vibeGuide[method]({}, new AbortController().signal), { code: 'vibeguide/access-denied' });
+    for (const method of ['reviseRequirement', 'confirmRequirement', 'handoff', 'analyze']) await assert.rejects(root.vibeGuide[method]({}, new AbortController().signal), { code: 'vibeguide/access-denied' });
     await writeFile(join(projectDirectory, 'p4.test.mjs'), 'import {readFileSync} from "node:fs"; import assert from "node:assert/strict"; const page=readFileSync("index.html","utf8"); assert.ok(page.includes("<h1>每天一个问题</h1>")); assert.ok(page.includes("app.js"));');
     const p4Session = (await root.sessionController.create({ workspaceId: workspace.id, agentPreset: 'vibeguide' })).sessionId;
     await root.sessionController.selectModel({ sessionId: p4Session, provider: 'vibeguide-fixture', model: 'fixture' });
     const p4Snapshot = await invoke('getSnapshot', { sessionId: p4Session }), p4Scope = { sessionId: p4Session, projectId: p4Snapshot.scope.projectId };
-    const p4Delivery = await invoke('submit', { ...p4Scope, clientRequestId: 'p4-native-requirement', basis: p4Snapshot.basis, statement: '把页面标题改成每天一个问题，保留回答保存。P4_NATIVE_TITLE' });
-    assert.ok(p4Delivery.delivery.background.some(row => row.text === p2IdleRequest.statement), 'related history must be visibly attached');
+    const p4Suggested = await invoke('ask', { sessionId: p4Session, clientRequestId: 'p4-suggest', basis: p4Snapshot.basis, question: '标题要怎么改？P4_SUGGEST' });
+    const p4Delivery = await invoke('handoff', { ...p4Scope, clientRequestId: 'p4-native-requirement', source: { kind: 'explanation', id: p4Suggested.id } });
+    assert.ok(p4Delivery.delivery.background.some(row => row.text === p2IdleStatement), 'related history must be visibly attached');
     let p4View, p4Outcome;
     for (let i = 0; i < 150; i++) {
       await invoke('getSnapshot', { sessionId: p4Session });
@@ -407,13 +416,8 @@ if (!process.versions.electron) {
     }
     assert.ok(p4Outcome?.candidates.some(row => row.linked && row.kind === 'check' && row.current), JSON.stringify(p4Outcome));
     const p4Ref = { id: p4Outcome.requirement.id, version: p4Outcome.requirement.version };
-    const p4Trial = await invoke('prepareReview', { ...p4Scope, clientRequestId: 'p4-trial', requirement: p4Ref });
-    p4Outcome = (await invoke('projectView', p4Scope)).work.outcomes.find(row => row.requirement.id === p4Ref.id);
-    const p4Coverage = p4Trial.steps.map(step => ({ stepId: step.id,
-      changes: p4Outcome.candidates.filter(row => row.current && row.linked && row.kind === 'change').map(row => row.ref),
-      checks: p4Outcome.candidates.filter(row => row.current && row.linked && row.kind === 'check').map(row => row.ref) }));
-    await invoke('bindOutcome', { ...p4Scope, clientRequestId: 'p4-bind', requirement: p4Ref, trialId: p4Trial.id, evidenceVersion: p4Outcome.evidenceVersion, coverage: p4Coverage, scopeConfirmed: true });
-    await invoke('feedback', { ...p4Scope, clientRequestId: 'p4-feedback', cardId: p4Trial.id, stepId: p4Trial.steps[0].id, fileDigest: p4Trial.basis.digest, result: 'pass' });
+    assert.equal(p4Outcome.state, 'needs_feedback', 'a linked native change makes the requirement ready to try');
+    await invoke('confirmRequirement', { ...p4Scope, clientRequestId: 'p4-confirm', requirement: p4Ref });
     assert.equal((await invoke('projectView', p4Scope)).work.outcomes.find(row => row.requirement.id === p4Ref.id).state, 'complete');
     const p4Analysis = await invoke('analyze', { ...p4Scope, clientRequestId: 'p4-changes', kind: 'changes', question: '这次实际改动有什么影响？' });
     assert.ok(p4Analysis.coveredChanges > 0);
@@ -428,7 +432,7 @@ if (!process.versions.electron) {
     const oldRequirement = p4View.work.requirements.find(row => row.deliveryId === p2Accepted.id);
     await invoke('reviseRequirement', { ...p4Scope, clientRequestId: 'p4-revise', requirement: { id: oldRequirement.id, version: oldRequirement.version }, text: '整个项目保留标题每天一个问题，不公开用户回答。', state: 'active', applicability: 'project' });
     assert.equal((await invoke('projectView', p4Scope)).work.requirements.find(row => row.id === oldRequirement.id).forwarded, 'not_forwarded');
-    console.log(JSON.stringify({ scopedRequirementCompleted: true, actualNativeLineage: true, visibleHistoryAttached: true, requirementRevisionNotSilentlyForwarded: true,
+    console.log(JSON.stringify({ ownerConfirmedRequirement: true, actualNativeLineage: true, visibleHistoryAttached: true, requirementRevisionNotSilentlyForwarded: true,
       actualBeforeAfterExplained: true, goalLocatorReadOnly: true, analysisCached: true, passiveModelCalls: 0, actualModelQualityEvaluated: false }));
 
     // P1: native execution hooks, not fabricated event text, establish the receipts.
@@ -554,16 +558,15 @@ if (!process.versions.electron) {
     assert.equal(recoveredProgress.progress.activity, 'idle', 'old runtime operations must not remain running');
     const p2Restored = await invoke('getSnapshot', { sessionId: p2IdleSession });
     assert.equal(p2Restored.deliveries[0].state, 'accepted');
-    await invoke('submit', p2IdleRequest);
+    await invoke('handoff', p2IdleRequest);
     assert.equal((await p2NativeMessages()).length, 1, 'reloaded delivery must not resend');
     assert.equal((await invoke('getSnapshot', { sessionId: deliverySessionId })).deliveries.find(row => row.id === p2Queued.id).state, 'queued');
     const p3Recovered = await invoke('projectView', p3Scope);
     assert.equal(p3Recovered.overview.id, p5Graph.id);
     assert.ok(p3Recovered.versions.some(row => row.id === p3Graph.id));
     assert.equal((await invoke('supportView', p5Scope)).preferences.detail, 'brief');
-    assert.equal(p3Recovered.trials.find(row => row.id === p3Trial.id).feedback.length, 1);
     assert.equal((await invoke('history', p3Scope)).items.find(row => row.id === answer.id).annotation.text, p3Corrected.annotation.text);
-    console.log(JSON.stringify({ projectKnowledgeRecovered: true, trialFeedbackRecovered: true, correctionRecovered: true }));
+    console.log(JSON.stringify({ projectKnowledgeRecovered: true, correctionRecovered: true }));
     console.log(JSON.stringify({ deliveriesRecoveredOnReload: true, noRepeatAfterReload: true }));
     console.log(JSON.stringify({ hotReloadRestoresRecords: true, writerGuardReleased: true, noPhantomRunningState: true }));
     await reloaded.dispose();

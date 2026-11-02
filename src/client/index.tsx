@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import type { Explanation, GuideSnapshot, InputRequest, InputResult } from '../guide/contracts.js';
+import type { Explanation, GuideSnapshot, HandoffSource, InputRequest, InputResult } from '../guide/contracts.js';
+import { handoffKey } from './analysis-card.js';
 import { guideCall, GuideCallError } from './rpc.js';
 import { readOutbox, saveOutbox, clearOutbox } from './outbox.js';
 import { ProjectPanels } from './project-panels.js';
 import type { GuideTab } from './project-panels.js';
-import type { RequirementRef } from '../guide/work-types.js';
 import type { Focus } from '../guide/project-types.js';
 
 export const inject = ['slots', 'sidebarRightTabs', 'sidebarRight', 'connection'];
@@ -21,7 +21,7 @@ function GearIcon() {
 
 export function GuidePanel({ sessionId, rpc }: { sessionId: string; rpc: Rpc }) {
   const [tab, setTab] = useState<GuideTab>('progress');
-  const [background, setBackground] = useState<RequirementRef[]>();
+  const [sending, setSending] = useState<string>();
   const [focus, setFocus] = useState<Focus>();
   const focusIdentity = useRef<string>();
   focusIdentity.current = focus ? JSON.stringify(focus.ref) : undefined;
@@ -35,7 +35,6 @@ export function GuidePanel({ sessionId, rpc }: { sessionId: string; rpc: Rpc }) 
   const [submitting, setSubmitting] = useState(false);
   const [outbox, setOutbox] = useState<InputRequest>();
   const outboxScope = useRef<string>();
-  const submittedId = useRef<string>();
   const generation = useRef(0);
   const explanation = useRef<AbortController>();
   const read = useRef<AbortController>();
@@ -58,7 +57,7 @@ export function GuidePanel({ sessionId, rpc }: { sessionId: string; rpc: Rpc }) 
       const next = await rpc<GuideSnapshot>('getSnapshot', { sessionId }, AbortSignal.any([controller.signal, AbortSignal.timeout(10000)]));
       if (!controller.signal.aborted && active.current && epoch === generation.current && read.current === controller) {
         if (project.current && project.current !== next.scope.projectId) {
-          explanation.current?.abort(); setQuestion(''); setFocus(undefined); setBackground(undefined); setTab('progress');
+          explanation.current?.abort(); setQuestion(''); setFocus(undefined); setTab('progress');
         }
         project.current = next.scope.projectId;
         setSnapshot(next); setReadError('');
@@ -126,15 +125,11 @@ export function GuidePanel({ sessionId, rpc }: { sessionId: string; rpc: Rpc }) 
 
   async function submit() {
     if (!snapshot || asking.current || (!question.trim() && !outbox)) return;
-    const pendingClarification = snapshot.inputs?.slice().reverse().find(input => input.kind === 'clarify' && !input.resolvedBy);
     const request: InputRequest = outbox ?? { sessionId, projectId: snapshot.scope.projectId,
-      clientRequestId: crypto.randomUUID(), statement: question, basis: snapshot.basis,
-      ...(pendingClarification ? { replyTo: pendingClarification.id } : {}),
-      ...(focus ? { context: focus.ref } : {}), ...(background !== undefined ? { background } : {}) };
+      clientRequestId: crypto.randomUUID(), statement: question, basis: snapshot.basis, ...(focus ? { context: focus.ref } : {}) };
     try { saveOutbox(window.localStorage, request); }
     catch (e) { setError(e instanceof Error ? e.message : '提交标识未能保存，这次尚未发送。'); return; }
     setOutbox(request); asking.current = true; setBusy(true); setSubmitting(true); setError('');
-    submittedId.current = request.clientRequestId;
     const controller = new AbortController(); explanation.current = controller; const epoch = generation.current;
     try {
       const result = await rpc<InputResult>('submit', request, AbortSignal.any([controller.signal, AbortSignal.timeout(60000)]));
@@ -143,14 +138,13 @@ export function GuidePanel({ sessionId, rpc }: { sessionId: string; rpc: Rpc }) 
         setOutbox(undefined); setQuestion('');
         if (focusIdentity.current === (request.context ? JSON.stringify(request.context) : undefined)) { setFocus(undefined); setTab('progress'); }
         setSnapshot(current => current && ({ ...current,
-          inputs: [...(current.inputs ?? []).filter(row => row.id !== result.input.id).map(row => row.id === request.replyTo ? { ...row, resolvedBy: result.input.id } : row), result.input],
-          deliveries: result.delivery ? [...(current.deliveries ?? []).filter(row => row.id !== result.delivery!.id), result.delivery] : current.deliveries }));
+          inputs: [...(current.inputs ?? []).filter(row => row.id !== result.input.id), result.input] }));
         if (result.explanation) setAnswers(previous => [...previous.filter(row => row.id !== result.explanation!.id), result.explanation!]);
         void refresh(true);
       }
     } catch (e) {
       if (!controller.signal.aborted && active.current && generation.current === epoch && project.current === request.projectId) {
-        if (e instanceof GuideCallError && ['invalid_input', 'clarification_changed', 'input_too_long', 'context_changed', 'basis_changed', 'requirement_changed', 'history_incomplete', 'history_too_large'].some(code => e.code === `vibeguide/${code}`)) {
+        if (e instanceof GuideCallError && ['invalid_input', 'context_changed', 'basis_changed'].some(code => e.code === `vibeguide/${code}`)) {
           clearOutbox(window.localStorage, request); setOutbox(undefined); setQuestion(request.statement); setFocus(undefined);
           setError(`${e.message} 原话已放回输入框，请核对后再提交。`);
         } else {
@@ -163,6 +157,22 @@ export function GuidePanel({ sessionId, rpc }: { sessionId: string; rpc: Rpc }) 
       asking.current = false;
       if (active.current && generation.current === epoch) { setBusy(false); setSubmitting(false); }
     }
+  }
+
+  /** The click is the authorization; the request survives closing the sidebar once admitted. */
+  async function handoff(source: HandoffSource) {
+    if (!snapshot || sending) return;
+    const projectId = snapshot.scope.projectId;
+    setSending(handoffKey(source)); setError('');
+    try {
+      const result = await rpc<InputResult>('handoff', { sessionId, projectId, clientRequestId: crypto.randomUUID(), source }, AbortSignal.timeout(90000));
+      if (active.current && project.current === projectId) setSnapshot(current => current && ({ ...current,
+        inputs: [...(current.inputs ?? []).filter(row => row.id !== result.input.id), result.input],
+        deliveries: result.delivery ? [...(current.deliveries ?? []).filter(row => row.id !== result.delivery!.id), result.delivery] : current.deliveries }));
+      void refresh(true);
+    } catch (e) {
+      if (active.current) { setError(e instanceof Error ? e.message : '这次没有发送，可以再点一次。'); void refresh(); }
+    } finally { if (active.current) setSending(undefined); }
   }
 
   return <section ref={panel} className="vg-panel" aria-label="VibeGuide 理解助手" data-testid="vibeguide-panel">
@@ -190,35 +200,32 @@ export function GuidePanel({ sessionId, rpc }: { sessionId: string; rpc: Rpc }) 
         <button disabled={busy} onClick={() => void ask('请解释这道题各个选项对使用体验的影响，并说明取舍，不要替我选择。', choice)}>帮我看懂这些选项</button>
         <p className="vg-muted">选好后，请回左侧主对话的原问题作答。</p>
       </article>)}
-      {snapshot.inputs?.filter(input => input.kind !== 'modify' && (input.kind !== 'explain' || input.state !== 'done')).map(input => <article key={input.id} className="vg-card">
+      {snapshot.inputs?.filter(input => input.kind === 'redirect' || input.state === 'failed' && (input.kind === 'explain' || !!input.handoff)).slice(-3).map(input => <article key={input.id} className="vg-card">
         <h3>{input.statement}</h3>
-        <p>{input.message ?? '正在回答你的问题，没有转交修改。'}</p>
-        {input.kind === 'clarify' && <small className="vg-muted">{input.resolvedBy ? '已收到后续补充。' : '在下方补充即可；不继续这次要求时可以输入“取消”。'}</small>}
+        <p>{input.message ?? '这次没有完成。'}</p>
       </article>)}
       {snapshot.deliveries?.filter((delivery, i, rows) => delivery.state !== 'accepted' || rows.slice(i + 1).every(row => row.state !== 'accepted')).map(delivery => <article key={delivery.id} className="vg-card" aria-label="修改转交回执">
-        <h3>{{ pending: '要求已保存，准备发送', dispatching: '正在发送', queued: '已排队，等待主 AI 处理', accepted: '已送达主对话', unknown: '发送结果待核对', failed: '未发送成功' }[delivery.state]}</h3>
+        <h3>{{ pending: '准备发送', dispatching: '正在发送', queued: '已发到主对话，排队中', accepted: '已发到主对话', unknown: '发送结果待核对', failed: '没有发送成功' }[delivery.state]}</h3>
         <p className="vg-text">{delivery.userStatement}</p>
         {delivery.clarificationStatements.map((statement, i) => <p className="vg-text" key={i}>补充 {i + 1}：{statement}</p>)}
-        {!!delivery.background?.length && <div className="vg-attached"><strong>本次附带的历史约定（{delivery.background.length} 条）</strong>{delivery.background.map(row => <p className="vg-text" key={row.id}>{row.text}</p>)}</div>}
+        {!!delivery.background?.length && <details className="vg-attached"><summary>同时带上了 {delivery.background.length} 条之前的约定</summary>{delivery.background.map(row => <p className="vg-text" key={row.id}>{row.text}</p>)}</details>}
         {delivery.notice && <p className="vg-notice">{delivery.notice}</p>}
-        {(delivery.state === 'accepted' || delivery.state === 'queued') && <small className="vg-muted">已交给主对话，做完后可以在下方试用。</small>}
       </article>)}
       </div>
-      <ProjectPanels key={snapshot.scope.projectId} answers={answers} tab={tab} snapshot={snapshot} rpc={rpc} onFocus={value => { setFocus(value); panel.current?.querySelector<HTMLTextAreaElement>('.vg-composer textarea')?.focus(); }} onChanged={() => void refresh(true)} background={background} onBackground={setBackground} onQuestion={value => { setQuestion(value); panel.current?.querySelector<HTMLTextAreaElement>('.vg-composer textarea')?.focus(); }}/>
+      <ProjectPanels key={snapshot.scope.projectId} answers={answers} tab={tab} snapshot={snapshot} rpc={rpc} onFocus={value => { setFocus(value); panel.current?.querySelector<HTMLTextAreaElement>('.vg-composer textarea')?.focus(); }} onChanged={() => void refresh(true)} handoff={{ send: source => void handoff(source), sending, ready: snapshot.model.status === 'ready',
+        sent: new Set(snapshot.inputs?.filter(row => row.handoff && row.state !== 'failed').map(row => handoffKey(row.handoff!))) }} onQuestion={value => { setQuestion(value); panel.current?.querySelector<HTMLTextAreaElement>('.vg-composer textarea')?.focus(); }}/>
     </>}
     </div>
     {snapshot && <footer className="vg-composer">
       <form onSubmit={event => { event.preventDefault(); void submit(); }}>
-        {background !== undefined && <div className="vg-notice">下次修改附带 {background.length} 条你选定的历史约定。<button type="button" disabled={!!outbox} onClick={() => setBackground(undefined)}>恢复按相关性选取</button></div>}
-        {focus && <div className="vg-notice">正在追问：{focus.label} <button type="button" onClick={() => setFocus(undefined)} disabled={!!outbox}>取消关联</button><small className="vg-muted"> 关联内容只用于讲解；修改要求请写清具体对象和效果。</small></div>}
+        {focus && <div className="vg-notice">正在追问：{focus.label} <button type="button" onClick={() => setFocus(undefined)} disabled={!!outbox}>取消关联</button></div>}
         {snapshot.model.status === 'not_configured' && <p className="vg-notice">主对话尚未选择模型，选择后即可请求 AI 讲解。</p>}
-        {snapshot.inputs?.slice().reverse().find(input => input.kind === 'clarify' && !input.resolvedBy) && <p className="vg-notice">正在补充上面那次要求；原话和限制会一起保留。输入“取消”可结束这次澄清。</p>}
         {outbox && !submitting && <p className="vg-notice">上次提交的响应尚待核对。点“核对并重试”会使用同一个提交标识。</p>}
-        <div className="vg-input"><textarea id={`vg-question-${sessionId}`} aria-label="提问或提出修改" className={(outbox?.statement ?? question) ? 'vg-filled' : ''} value={outbox?.statement ?? question} disabled={!!outbox || submitting} onChange={event => setQuestion(event.target.value)}
-          onKeyDown={event => { if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} maxLength={4000} rows={1} placeholder="问问题只讲解；说清要改什么会交给主 AI"/>
-        {busy && (!submitting || snapshot.inputs?.some(input => input.id === submittedId.current && input.kind === 'explain')) ? <button type="button" onClick={() => explanation.current?.abort()}>停止讲解</button>
+        <div className="vg-input"><textarea id={`vg-question-${sessionId}`} aria-label="提问" className={(outbox?.statement ?? question) ? 'vg-filled' : ''} value={outbox?.statement ?? question} disabled={!!outbox || submitting} onChange={event => setQuestion(event.target.value)}
+          onKeyDown={event => { if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} maxLength={4000} rows={1} placeholder="想弄明白什么？要修改请在主对话说"/>
+        {busy ? <button type="button" onClick={() => explanation.current?.abort()}>停止讲解</button>
           : <button className="vg-primary" disabled={busy || (!question.trim() && !outbox)}>{submitting ? '提交中…' : outbox ? '核对并重试' : '发送'}</button>}</div>
-        {busy && <p role="status" className="vg-muted">{submitting ? '正在处理你的输入…' : '正在讲解你的问题…'}</p>}
+        {busy && <p role="status" className="vg-muted">正在讲解你的问题…</p>}
       </form>
     </footer>}
   </section>;
@@ -246,5 +253,5 @@ export function apply(ctx: any) {
 const styles = `
 .vg-panel{font:13px/1.65 system-ui,sans-serif;color:var(--dsw-alias-label-primary,#263b35);display:flex;flex-direction:column;overflow:hidden;height:100%;min-height:0;box-sizing:border-box;min-width:0}
 .vg-content{flex:1;min-height:0;overflow:auto;padding:20px 16px;overflow-wrap:anywhere}.vg-composer{flex-shrink:0;padding:12px 16px 16px;border-top:1px solid #78918530}.vg-composer .vg-section-label{display:block;margin:0 0 8px}.vg-panel .vg-composer textarea{max-height:160px;min-height:38px;margin:0;resize:none;transition:min-height .15s}.vg-panel .vg-composer textarea:focus,.vg-panel .vg-composer textarea.vg-filled{min-height:84px}.vg-input{display:flex;gap:8px;align-items:flex-end}.vg-input button{flex-shrink:0}.vg-composer{padding:10px 16px 12px}
-.vg-badge{flex-shrink:0;font-size:11px;padding:2px 8px;border-radius:10px;white-space:nowrap}.vg-badge-doing{background:#c6a25c22;color:#8c7040}.vg-badge-try{background:#5c8ec622;color:#3d6390}.vg-badge-done{background:#36695222;color:#366952}.vg-row h3{margin:0}.vg-tools{display:flex;gap:6px;align-items:center}.vg-panel .vg-gear{display:flex;padding:5px 7px}.vg-panel .vg-gear[aria-pressed=true]{background:#366952;color:white;border-color:#366952}.vg-tabs{display:flex;gap:4px;margin:14px 0}.vg-tabs button{flex:1}.vg-panel .vg-tabs button[aria-pressed=true]{background:#366952;color:white}.vg-graph-scroll{overflow:auto;border:1px solid #78918530;border-radius:10px;margin:12px 0}.vg-graph-scroll svg{display:block}.vg-graph-scroll g[role=button]{cursor:pointer}.vg-graph-scroll g:focus{outline:2px solid #366952}.vg-node-list,.vg-actions{display:flex;gap:7px;flex-wrap:wrap;margin:12px 0}.vg-node-list button[aria-pressed=true]{border-color:#366952;background:#8eb89c30}.vg-panel input[type=checkbox]{display:inline-block;width:auto;margin-right:8px}.vg-attached{border-left:2px solid #789185;padding-left:10px;margin:10px 0}.vg-panel fieldset{border:1px solid #78918555;border-radius:8px;margin:10px 0;min-width:0}.vg-panel fieldset label{display:block;margin:7px 0;overflow-wrap:anywhere}.vg-panel select{display:block;width:100%;max-width:100%;background:var(--background,#fff);color:#263b35;border:1px solid #78918555;border-radius:6px;padding:8px;font:inherit;margin:6px 0 12px}.vg-panel label{overflow-wrap:anywhere}.vg-panel input{display:block;width:100%;background:transparent;color:inherit;border:1px solid #78918555;border-radius:6px;padding:8px;font:inherit}.vg-panel *{box-sizing:border-box}.vg-heading,.vg-row{display:flex;align-items:center;justify-content:space-between;gap:10px}.vg-heading small{letter-spacing:.15em;color:#5d7d6f;font-size:10px}.vg-panel h2{font-size:18px;line-height:1.4;margin:3px 0}.vg-panel h3{font-size:13px;margin:5px 0 8px}.vg-muted{color:#78857e;font-size:12px}.vg-panel p{margin:10px 0}.vg-section-label{font-size:12px;font-weight:600;color:#688576;margin:23px 0 9px}.vg-card{padding:13px;border:1px solid #78918530;border-radius:10px;margin:10px 0;background:#8eb89c08}.vg-card summary{cursor:pointer;font-weight:600}.vg-excerpt{display:block;font-weight:400;font-size:12px;opacity:.8;margin-top:7px}.vg-text{white-space:pre-wrap;overflow-wrap:anywhere}.vg-choice{border-left:3px solid #6a8b78}.vg-panel ul{padding-left:20px}.vg-panel li{margin:8px 0}.vg-panel button{cursor:pointer;border:1px solid #78918555;border-radius:7px;background:transparent;color:inherit;font:inherit;font-size:12px;padding:5px 10px}.vg-panel button:hover{background:#8eb89c20}.vg-panel button:disabled{opacity:.5;cursor:default}.vg-panel .vg-primary{background:#366952;color:white;border-color:#366952}.vg-panel textarea{font:inherit;line-height:1.6;background:transparent;color:inherit;border:1px solid #78918566;border-radius:9px;padding:11px;width:100%;resize:vertical;min-height:80px;margin-bottom:7px}.vg-panel textarea:focus{outline:2px solid #6a9d83;outline-offset:2px}.vg-notice{padding:9px 11px;border-radius:7px;background:#c6a25c18;color:#8c7040;font-size:12px}.vg-answer{background:#8eb89c10}.vg-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+.vg-badge{flex-shrink:0;font-size:11px;padding:2px 8px;border-radius:10px;white-space:nowrap}.vg-badge-doing{background:#c6a25c22;color:#8c7040}.vg-badge-try{background:#5c8ec622;color:#3d6390}.vg-badge-done{background:#36695222;color:#366952}.vg-row h3{margin:0}.vg-suggestion{border-top:1px solid #78918530;margin-top:10px;padding-top:6px}.vg-tools{display:flex;gap:6px;align-items:center}.vg-panel .vg-gear{display:flex;padding:5px 7px}.vg-panel .vg-gear[aria-pressed=true]{background:#366952;color:white;border-color:#366952}.vg-tabs{display:flex;gap:4px;margin:14px 0}.vg-tabs button{flex:1}.vg-panel .vg-tabs button[aria-pressed=true]{background:#366952;color:white}.vg-graph-scroll{overflow:auto;border:1px solid #78918530;border-radius:10px;margin:12px 0}.vg-graph-scroll svg{display:block}.vg-graph-scroll g[role=button]{cursor:pointer}.vg-graph-scroll g:focus{outline:2px solid #366952}.vg-node-list,.vg-actions{display:flex;gap:7px;flex-wrap:wrap;margin:12px 0}.vg-node-list button[aria-pressed=true]{border-color:#366952;background:#8eb89c30}.vg-panel input[type=checkbox]{display:inline-block;width:auto;margin-right:8px}.vg-attached{border-left:2px solid #789185;padding-left:10px;margin:10px 0}.vg-panel fieldset{border:1px solid #78918555;border-radius:8px;margin:10px 0;min-width:0}.vg-panel fieldset label{display:block;margin:7px 0;overflow-wrap:anywhere}.vg-panel select{display:block;width:100%;max-width:100%;background:var(--background,#fff);color:#263b35;border:1px solid #78918555;border-radius:6px;padding:8px;font:inherit;margin:6px 0 12px}.vg-panel label{overflow-wrap:anywhere}.vg-panel input{display:block;width:100%;background:transparent;color:inherit;border:1px solid #78918555;border-radius:6px;padding:8px;font:inherit}.vg-panel *{box-sizing:border-box}.vg-heading,.vg-row{display:flex;align-items:center;justify-content:space-between;gap:10px}.vg-heading small{letter-spacing:.15em;color:#5d7d6f;font-size:10px}.vg-panel h2{font-size:18px;line-height:1.4;margin:3px 0}.vg-panel h3{font-size:13px;margin:5px 0 8px}.vg-muted{color:#78857e;font-size:12px}.vg-panel p{margin:10px 0}.vg-section-label{font-size:12px;font-weight:600;color:#688576;margin:23px 0 9px}.vg-card{padding:13px;border:1px solid #78918530;border-radius:10px;margin:10px 0;background:#8eb89c08}.vg-card summary{cursor:pointer;font-weight:600}.vg-excerpt{display:block;font-weight:400;font-size:12px;opacity:.8;margin-top:7px}.vg-text{white-space:pre-wrap;overflow-wrap:anywhere}.vg-choice{border-left:3px solid #6a8b78}.vg-panel ul{padding-left:20px}.vg-panel li{margin:8px 0}.vg-panel button{cursor:pointer;border:1px solid #78918555;border-radius:7px;background:transparent;color:inherit;font:inherit;font-size:12px;padding:5px 10px}.vg-panel button:hover{background:#8eb89c20}.vg-panel button:disabled{opacity:.5;cursor:default}.vg-panel .vg-primary{background:#366952;color:white;border-color:#366952}.vg-panel textarea{font:inherit;line-height:1.6;background:transparent;color:inherit;border:1px solid #78918566;border-radius:9px;padding:11px;width:100%;resize:vertical;min-height:80px;margin-bottom:7px}.vg-panel textarea:focus{outline:2px solid #6a9d83;outline-offset:2px}.vg-notice{padding:9px 11px;border-radius:7px;background:#c6a25c18;color:#8c7040;font-size:12px}.vg-answer{background:#8eb89c10}.vg-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
 `;

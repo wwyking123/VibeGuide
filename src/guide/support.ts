@@ -75,7 +75,7 @@ export class GuideSupport {
         this.prune(s, turn);
         for (const row of s.usage) if (row.state === 'pending' && !this.active.has(row.id)) row.state = 'unknown';
         const calls = s.usage.filter(row => row.kind === 'model');
-        if (calls.filter(row => row.day === day).length >= budget.dailyCalls || calls.filter(row => row.turn === turn).length >= budget.turnCalls) throw new GuideError('budget_reached', '本项目的侧栏讲解次数已用完。可在「了解过的 → 讲解设置与用量」调整；主对话开发继续，已有讲解和常用概念仍可查看。');
+        if (calls.filter(row => row.day === day).length >= budget.dailyCalls || calls.filter(row => row.turn === turn).length >= budget.turnCalls) throw new GuideError('budget_reached', '本项目的侧栏讲解次数已用完。可在侧栏设置（齿轮）里调整；主对话开发继续，已有讲解和常用概念仍可查看。');
         if (s.usage.length >= 5000) throw new GuideError('record_full', '用量记录已满，本次没有调用模型。');
         s.usage.push({ id, kind: 'model', state: 'pending', day, turn, sessionId: snapshot.scope.sessionId, createdAt: this.clock().toISOString() });
       });
