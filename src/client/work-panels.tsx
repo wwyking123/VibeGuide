@@ -66,15 +66,13 @@ export function WorkPanels({ view, sessionId, tab, busy, modelReady, run, backgr
       <div className="vg-actions"><button aria-pressed={background === undefined} onClick={() => onBackground(undefined)}>按相关性选取</button><button aria-pressed={background?.length === 0} onClick={() => onBackground([])}>这次不附带历史</button></div>
       {!work?.requirements.length && <p>还没有记录到明确要求。在主对话或侧栏提出修改后，这里会保留原话。</p>}
       {work?.requirements.filter(row => showRetired || row.state === 'active').map(row => <article key={row.id} className="vg-card">
-        <p className="vg-text">{row.text}</p><small className="vg-muted">{row.state === 'retired' ? '已停用' : row.applicability === 'project' ? '整个项目适用' : '相关任务适用'} · {{ accepted: '当前版本已送达本会话', pending: '正在转交', unknown: '转交结果待核对', not_forwarded: '当前版本尚未转交本会话' }[row.forwarded]}</small>
+        <p className="vg-text">{row.text}</p>{(row.state === 'retired' || row.applicability === 'project') && <small className="vg-muted">{row.state === 'retired' ? '已停用' : '整个项目都要遵守'}</small>}
         {row.state === 'active' && <label><input type="checkbox" checked={!!background?.some(item => item.id === row.id && item.version === row.version)} onChange={event => onBackground(event.target.checked ? [...(background ?? []).filter(item => item.id !== row.id), ref(row)] : (background ?? []).filter(item => item.id !== row.id))}/>下次修改附带这条约定</label>}
-        {row.modifiedAt && <p className="vg-muted">已按你的修改更新；此前发到主对话的内容不会被撤回。</p>}
         <div className="vg-actions"><button disabled={!!busy} onClick={() => setEdit({ row, text: row.text, applicability: row.applicability })}>修改这条约定</button>
           <button disabled={!!busy} onClick={() => void run('reviseRequirement', { requirement: ref(row), text: row.text, state: row.state === 'active' ? 'retired' : 'active', applicability: row.applicability })}>{row.state === 'active' ? '不再使用' : '恢复使用'}</button></div>
         {edit?.row.id === row.id && <form onSubmit={event => { event.preventDefault(); void run('reviseRequirement', { requirement: ref(edit.row), text: edit.text, state: 'active', applicability: edit.applicability }).then(ok => { if (ok) setEdit(undefined); }); }}>
           <label>约定内容<textarea value={edit.text} maxLength={12000} onChange={event => setEdit({ ...edit, text: event.target.value })}/></label>
           <label><input type="checkbox" checked={edit.applicability === 'project'} onChange={event => setEdit({ ...edit, applicability: event.target.checked ? 'project' : 'related' })}/>整个项目都要遵守</label>
-          <p className="vg-muted">保存只更新约定；下次明确修改并附带它时才交给主 AI。</p>
           <button disabled={!!busy || !edit.text.trim()}>保存约定</button> <button type="button" onClick={() => setEdit(undefined)}>关闭编辑</button>
         </form>}
       </article>)}

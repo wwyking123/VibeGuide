@@ -2,6 +2,7 @@ import { SupportPanel } from './support-panel.js';
 import { useEffect, useRef, useState } from 'react';
 import { WorkPanels } from './work-panels.js';
 import { AnalysisCard } from './analysis-card.js';
+import { Markdown } from './markdown.js';
 import type { RequirementRef } from '../guide/work-types.js';
 import type { Explanation, GuideSnapshot } from '../guide/contracts.js';
 import type { Focus, ProjectView } from '../guide/project-types.js';
@@ -16,7 +17,6 @@ export function ProjectPanels({ tab, snapshot, answers, rpc, onFocus, onChanged,
 }) {
   const [view, setView] = useState<ProjectView>();
   const [selected, setSelected] = useState<string>();
-  const [zoom, setZoom] = useState(1);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState('');
   const [retry, setRetry] = useState<{ method: string; request: Record<string, unknown> }>();
@@ -86,9 +86,9 @@ export function ProjectPanels({ tab, snapshot, answers, rpc, onFocus, onChanged,
         <article className="vg-card"><p>{overview.summary}</p>
           {overview.historical && <p className="vg-notice">项目文件有变化，可以更新概览。</p>}
         </article>
-        <div className="vg-row"><small>选择任一部分查看影响</small><div><button aria-label="缩小结构图" onClick={() => setZoom(value => Math.max(.75, value - .25))}>−</button> <button aria-label="放大结构图" onClick={() => setZoom(value => Math.min(2, value + .25))}>＋</button></div></div>
+        <small className="vg-muted">点一个部分，看它负责什么</small>
         <div className="vg-graph-scroll">
-          <svg role="group" aria-label="项目职责图，关系仅为观察到的代码引用" viewBox={`0 0 400 ${Math.ceil(overview.nodes.length / 2) * 105 + 20}`} style={{ width: `${zoom * 100}%`, minWidth: 300 }}>
+          <svg role="group" aria-label="项目职责图，关系仅为观察到的代码引用" viewBox={`0 0 400 ${Math.ceil(overview.nodes.length / 2) * 105 + 20}`} style={{ width: '100%' }}>
             {overview.edges.map((edge, index) => {
               const a = overview.nodes.findIndex(row => row.id === edge.from), b = overview.nodes.findIndex(row => row.id === edge.to);
               return <line key={index} x1={a % 2 * 200 + 100} y1={Math.floor(a / 2) * 105 + 50} x2={b % 2 * 200 + 100} y2={Math.floor(b / 2) * 105 + 50} stroke="#789185" strokeDasharray="4 4"/>;
@@ -96,17 +96,14 @@ export function ProjectPanels({ tab, snapshot, answers, rpc, onFocus, onChanged,
             {overview.nodes.map((item, index) => <g key={item.id} role="button" tabIndex={0} aria-label={`${item.title}${overview.changedNodes.includes(item.id) ? '，相关文件有变化' : ''}`} aria-pressed={`${overview.id}:${item.id}` === selected}
               transform={`translate(${index % 2 * 200 + 8},${Math.floor(index / 2) * 105 + 12})`} onClick={() => focusNode(item.id)} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); focusNode(item.id); } }}>
               <rect width="184" height="76" rx="12" fill={goalNodes.has(item.id) ? '#dce9fa' : `${overview.id}:${item.id}` === selected ? '#d6e8dc' : '#edf2ee'} stroke={overview.changedNodes.includes(item.id) ? '#bc8a3d' : '#789185'} strokeWidth={`${overview.id}:${item.id}` === selected ? 2 : 1}/>
-              <text x="12" y="30" fill="#263b35" fontSize="12">{item.title.length > 13 ? item.title.slice(0, 12) + '…' : item.title}</text>
-              <text x="12" y="53" fill="#687b70" fontSize="10">{overview.changedNodes.includes(item.id) ? '相关文件有变化' : '职责待实际验证'}</text>
+              <text x="12" y={overview.changedNodes.includes(item.id) ? 32 : 43} fill="#263b35" fontSize="13">{item.title.length > 12 ? item.title.slice(0, 11) + '…' : item.title}</text>
+              {overview.changedNodes.includes(item.id) && <text x="12" y="55" fill="#a0742f" fontSize="10">有变化</text>}
             </g>)}
           </svg>
         </div>
-        <p className="vg-muted">连线表示观察到的代码引用，不是已验证的数据流；没有连线也不表示没有关联。</p>
-        {goal && <p className="vg-muted">蓝色标记与“{goal.question}”可能相关的已有部分。关系由 AI 推测，尚未实际验证。</p>}
-        <div className="vg-node-list" aria-label="项目结构列表">{overview.nodes.map(item => <button key={item.id} aria-pressed={`${overview.id}:${item.id}` === selected} onClick={() => focusNode(item.id)}>{item.title}{goalNodes.has(item.id) ? ' · 与目标相关' : ''}{overview.changedNodes.includes(item.id) ? ' · 有变化' : ''}</button>)}</div>
+        {goal && <p className="vg-muted">蓝色是和“{goal.question}”可能相关的部分。</p>}
         {node && <article className="vg-card"><h3>{node.title}</h3><p>{node.purpose}</p><p><strong>对使用的影响：</strong>{node.impact}</p>
           <button onClick={() => onFocus({ ref: { kind: 'node', id: `${overview.id}:${node.id}`, version: overview.id }, label: node.title })}>追问这一部分</button>
-          <small className="vg-muted"> 选择本身不调用 AI。</small>
         </article>}
         {!!overview.unknowns.length && <article className="vg-card"><h3>还不能确认</h3><ul>{overview.unknowns.map((item, index) => <li key={index}>{item}</li>)}</ul></article>}
       </>}
@@ -149,14 +146,16 @@ export function ProgressAnswers({ answers, view, onQuestion, onFocus }: {
     {trouble.feedback.map(row => <p key={row.id}>你试用时：{row.action} — 不符合预期{row.historical ? '（旧版本）' : ''}{row.note && `；${row.note}`}</p>)}
     <details><summary>最近尝试的结果</summary><ul>{trouble.attempts.map(row => <li key={row.id}>{date(row.at)} · {row.changed ? `修改了 ${row.changed} 个文件` : '运行操作或检查'}：{row.result === 'failed' ? '未成功' : row.result === 'succeeded' ? '正常结束' : '结果未知'}</li>)}</ul></details>
   </>;
+  const shown = answers.filter(answer => !answer.analysisId || !merged.has(answer.analysisId));
+  const newest = shown.filter(answer => answer.state !== 'historical').at(-1);
   const ask = <button onClick={() => onQuestion('现在卡住在哪里？请结合实际尝试和失败记录，解释使用影响，并给出下一步的选择。')}>{latest ? '重新梳理卡住的情况' : '梳理这次卡住的情况'}</button>;
   return <>
     {latest && !latest.historical ? <section aria-label="卡住时的下一步"><AnalysisCard row={latest} onQuestion={onQuestion} onFocus={onFocus}>{facts}</AnalysisCard></section>
       : stuck && <section className="vg-card" aria-label="卡住时的下一步"><h3>还没有顺利通过</h3>{facts}{ask}</section>}
-    {answers.filter(answer => !answer.analysisId || !merged.has(answer.analysisId)).map(answer => <article key={answer.id} className="vg-card vg-answer">
-      <h3>{answer.contextLabel && <small className="vg-muted">关于 {answer.contextLabel}<br/></small>}{answer.question}</h3>
+    {shown.map(answer => <details key={answer.id} className="vg-card vg-answer" open={answer.id === newest?.id}>
+      <summary>{answer.contextLabel && <small className="vg-muted">关于 {answer.contextLabel}<br/></small>}{answer.choiceId ? '这道选择题的各个选项' : answer.question}{answer.state === 'historical' && <small className="vg-muted"> · 之前的</small>}</summary>
       {answer.state === 'historical' && <p className="vg-notice">这是之前的讲解，情况可能已经变了。</p>}
-      <p className="vg-text">{answer.text}</p>
-    </article>)}
+      <Markdown text={answer.text}/>
+    </details>)}
   </>;
 }
