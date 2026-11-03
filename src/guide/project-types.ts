@@ -12,6 +12,8 @@ export type MissingPart = { title: string; purpose: string; layer: Layer };
 export type Overview = {
   id: string; projectId: string; scope: Scope; requestId: string; requestDigest: string; cacheKey: string;
   createdAt: string; model: ModelRoute; preferenceVersion?: string; basis: FileBasis; sampledFiles: number;
+  /** What people call the product, so the sidebar need not show a folder name. */
+  name?: string;
   summary: string; unknowns: string[]; nodes: Responsibility[]; missing?: MissingPart[];
   edges: { from: string; to: string }[];
 };

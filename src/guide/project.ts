@@ -149,9 +149,11 @@ export class ProjectService {
         if (!node || !Array.isArray(node.files) || !node.files.length || node.files.some((file: unknown) => typeof file !== 'string' || !allowed.has(file) || assigned.has(file))) invalid();
         node.files.forEach((file: string) => assigned.add(file));
         return { id: `n${index + 1}`, title: generatedText(node.title, 50), purpose: plain(generatedText(node.purpose, 500)), impact: plain(generatedText(node.impact, 500)), files: [...new Set<string>(node.files)],
-          layer: layerOf(node.layer), ...(node.maturity === 'works' || node.maturity === 'mock' ? { maturity: node.maturity, maturityReason: typeof node.maturityReason === 'string' && node.maturityReason.trim() ? generatedText(node.maturityReason, 300) : undefined } : {}) };
+          layer: layerOf(node.layer), ...(layerOf(node.layer) !== 'dev' && (node.maturity === 'works' || node.maturity === 'mock') ? { maturity: node.maturity, maturityReason: typeof node.maturityReason === 'string' && node.maturityReason.trim() ? generatedText(node.maturityReason, 300) : undefined } : {}) };
       });
-      const missing: MissingPart[] = (Array.isArray(parsed.missing) ? parsed.missing : []).slice(0, 4).filter((row: any) => row && typeof row.title === 'string' && row.title.trim())
+      // A part that already exists as a placeholder is shown as mock, not listed again as not built.
+      const existing = nodes.map(node => node.title);
+      const missing: MissingPart[] = (Array.isArray(parsed.missing) ? parsed.missing : []).slice(0, 4).filter((row: any) => row && typeof row.title === 'string' && row.title.trim() && !existing.includes(row.title.trim()) && layerOf(row.layer) !== 'dev')
         .map((row: any) => ({ title: generatedText(row.title, 50), purpose: typeof row.purpose === 'string' && row.purpose.trim() ? generatedText(row.purpose, 300) : '', layer: layerOf(row.layer) }));
       const edges: Overview['edges'] = [];
       for (const link of evidence.links) {
@@ -162,6 +164,7 @@ export class ProjectService {
       const result: Overview = { id: randomUUID(), projectId: snapshot.scope.projectId, scope: snapshot.scope,
         requestId: value.clientRequestId as string, requestDigest, cacheKey, createdAt: now(), model: snapshot.model.route, preferenceVersion: snapshot.preferenceVersion,
         basis: evidence.basis, sampledFiles: evidence.snippets.length, summary, nodes, edges, ...(missing.length ? { missing } : {}),
+        ...(typeof parsed.name === 'string' && parsed.name.trim() ? { name: generatedText(parsed.name, 20) } : {}),
         unknowns: parsed.unknowns.map(item => generatedText(item, 500)) };
       abort.throwIfAborted();
       await this.store.updateProject(result.projectId, state => { state.overviews.push(result); state.overviews = state.overviews.slice(-30); });

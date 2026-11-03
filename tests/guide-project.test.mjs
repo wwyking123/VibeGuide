@@ -28,7 +28,7 @@ async function fixture(t) {
     },
     structured: async (_snapshot, task, source) => {
       calls++;
-      return JSON.stringify({ summary: '一个保存个人回答的页面', missing: [{ title: '账号登录', layer: 'external', purpose: '换设备继续看需要识别同一个人' }, { title: '' }], nodes: source.files.filter(row => ['index.html', 'app.js'].includes(row.file)).map(row => ({ layer: row.file === 'index.html' ? 'page' : 'storage', maturity: row.file === 'index.html' ? 'works' : 'mock', maturityReason: '摘录推测', title: row.file === 'index.html' ? '回答页面' : '回答保存', purpose: '推测承担回答相关功能', impact: '换设备可能看不到原回答', files: [row.file] })), unknowns: ['权限和跨设备体验尚未验证'] });
+      return JSON.stringify({ name: '每日回答', summary: '一个保存个人回答的页面', missing: [{ title: '账号登录', layer: 'external', purpose: '换设备继续看需要识别同一个人' }, { title: '' }], nodes: source.files.filter(row => ['index.html', 'app.js'].includes(row.file)).map(row => ({ layer: row.file === 'index.html' ? 'page' : 'storage', maturity: row.file === 'index.html' ? 'works' : 'mock', maturityReason: '摘录推测', title: row.file === 'index.html' ? '回答页面' : '回答保存', purpose: '推测承担回答相关功能', impact: '换设备可能看不到原回答', files: [row.file] })), unknowns: ['权限和跨设备体验尚未验证'] });
     },
     explain: async (snapshot) => { calls++; context = snapshot.context; return '这是需要实际验证的讲解'; },
     saveExplanation: async answer => { await store.update(answer.scope, state => state.explanations.push(answer)); },
@@ -51,6 +51,7 @@ test('opening project/history is read-only; explicit overview is cached with lit
   const page = overview.nodes.find(node => node.title === '回答页面'), save = overview.nodes.find(node => node.title === '回答保存');
   assert.equal(page.layer, 'page'); assert.equal(page.maturity, 'works'); assert.doesNotMatch(page.purpose, /^(可能|推测)/, 'descriptions state the role without hedging'); assert.equal(save.layer, 'other', 'unknown layers fall back to other'); assert.equal(save.maturity, 'mock');
   assert.deepEqual(overview.missing, [{ title: '账号登录', purpose: '换设备继续看需要识别同一个人', layer: 'external' }]);
+  assert.equal(overview.name, '每日回答');
   assert.equal((await f.project.overview(f.req('overview-2'), signal())).id, overview.id);
   await f.project.view(f.base, signal()); assert.equal(f.calls(), 1); assert.equal(f.sends(), 0);
   assert.deepEqual(await readFile(join(f.root, 'app.js')), original);

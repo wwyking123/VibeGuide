@@ -11,9 +11,10 @@ export type GuideTab = 'progress' | 'structure' | 'settings';
 type Rpc = <T>(method: string, request: unknown, signal: AbortSignal) => Promise<T>;
 const date = (value: string) => new Date(value).toLocaleString(undefined, { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 
-export function ProjectPanels({ tab, snapshot, answers, rpc, onFocus, onChanged, onQuestion, handoff }: {
+export function ProjectPanels({ tab, snapshot, answers, rpc, onFocus, onChanged, onQuestion, handoff, onName }: {
   answers: Explanation[];
   tab: GuideTab; snapshot: GuideSnapshot; rpc: Rpc; onFocus: (focus: Focus) => void; onChanged: () => void; onQuestion: (text: string) => void; handoff: Handoff;
+  onName: (name: string | undefined) => void;
 }) {
   const [view, setView] = useState<ProjectView>();
   const [selected, setSelected] = useState<string>();
@@ -63,6 +64,8 @@ export function ProjectPanels({ tab, snapshot, answers, rpc, onFocus, onChanged,
   }
 
   const overview = view?.overview, node = overview?.nodes.find(item => `${overview.id}:${item.id}` === selected);
+  useEffect(() => { onName(overview?.name); }, [overview?.name]);
+  const quiet = !!view && !!snapshot.observations.length && !answers.length && !view.work?.trouble?.failures.length && !snapshot.choices.length;
   const focusNode = (id: string) => {
     setSelected(`${overview?.id}:${id}`);
   };
@@ -72,6 +75,11 @@ export function ProjectPanels({ tab, snapshot, answers, rpc, onFocus, onChanged,
     {error && <div role="alert" className="vg-notice"><p>{error}</p>{retry && !busy && <button onClick={() => void run(retry.method, retry.request, true)}>重试这次操作</button>}</div>}
     {busy && <p role="status" className="vg-muted">{busy === 'overview' ? '正在整理项目概览…' : '正在保存…'}</p>}
     {tab === 'settings' && <SupportPanel scope={scope} rpc={rpc} onChanged={onChanged}/> }
+    {tab === 'progress' && quiet && <div className="vg-intro">
+      <p>在这里问看不懂的地方，比如 AI 给的方案、选项或报错。要修改请直接在主对话说。</p>
+      <p className="vg-sub">“项目结构”里能看到项目分成哪几部分，各做到什么程度。</p>
+      <div className="vg-actions">{['这个项目现在能做什么？', '下一步做什么比较好？'].map(text => <button key={text} onClick={() => onQuestion(text)}>{text}</button>)}</div>
+    </div>}
     {tab === 'progress' && <ProgressAnswers answers={answers} view={view} onQuestion={onQuestion} onFocus={onFocus} handoff={handoff}/>}
     {tab === 'structure' && <section aria-label="项目结构">
       {!overview && <div className="vg-empty"><p>还没有生成概览。生成后能看到项目分成哪几部分、各自做到什么程度。</p>
@@ -105,7 +113,7 @@ function Layers({ overview, selected, goalNodes, onSelect }: { overview: NonNull
   const rated = overview.nodes.some(node => node.maturity) || !!overview.missing?.length;
   const dev = overview.nodes.filter(node => node.layer === DEV);
   const part = (node: typeof overview.nodes[number]) => {
-    const key = `${overview.id}:${node.id}`, changed = overview.changedNodes.includes(node.id), maturity = node.maturity && MATURITY[node.maturity];
+    const key = `${overview.id}:${node.id}`, changed = overview.changedNodes.includes(node.id), maturity = node.layer !== DEV && node.maturity && MATURITY[node.maturity];
     return <button key={node.id} className={`vg-part${goalNodes.has(node.id) ? ' vg-part-goal' : ''}`} aria-pressed={key === selected} onClick={() => onSelect(node.id)}>
       <span className="vg-part-main"><span className="vg-part-title">{node.title}{changed && <span className="vg-changed"> · 刚改过</span>}</span><span className="vg-part-sub">{node.purpose}</span></span>
       {maturity && <span className={`vg-tag vg-tag-${maturity[1]}`}>{maturity[1] === 'ok' ? '●' : '◐'} {maturity[0]}</span>}

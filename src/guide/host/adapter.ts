@@ -187,11 +187,11 @@ export class HarnessAdapter {
 
   async structured(snapshot: GuideSnapshot, task: 'overview' | 'trial' | 'goal' | 'changes' | 'trouble', source: unknown, signal: AbortSignal): Promise<string> {
     const schema = task === 'overview'
-      ? '返回 JSON {"summary":"这个项目为谁解决什么问题，150字以内","nodes":[{"title":"用户能理解的职责名称，10字以内","layer":"page|logic|data|external|dev","purpose":"一句话直接说它做什么，20字以内，不要用“可能”开头","impact":"对使用的影响与局限","maturity":"works|mock","maturityReason":"判断依据，一句话","files":["提供的摘录路径"]}],"missing":[{"title":"还没做的部分","layer":"page|logic|data|external","purpose":"为什么需要，一句话"}],"unknowns":["还不能确认的部分"]}。'
+      ? '返回 JSON {"name":"用户会怎么称呼这个产品，8字以内，例如“好消息”","summary":"这个项目为谁解决什么问题，150字以内","nodes":[{"title":"用户能理解的职责名称，10字以内","layer":"page|logic|data|external|dev","purpose":"一句话直接说它做什么，20字以内，不要用“可能”开头","impact":"对使用的影响与局限","maturity":"works|mock","maturityReason":"判断依据，一句话","files":["提供的摘录路径"]}],"missing":[{"title":"还没做的部分","layer":"page|logic|data|external","purpose":"为什么需要，一句话"}],"unknowns":["还不能确认的部分"]}。'
         + 'layer：page=用户直接看到和操作的页面；logic=背后的处理和规则；data=数据保存在哪里；external=登录、支付、地图等外部服务；dev=只给开发用、用户用不到的资料，如需求文档、说明文档、设计稿、测试和截图脚本、启动脚本。产品本身的部分优先放前四层。'
         + 'purpose 和 impact 用肯定句直接描述作用；不确定的地方写进 maturityReason 或 unknowns，不要在描述里写“可能”。'
         + 'maturity：works=摘录显示真的实现了；mock=看起来有但用的是写死的数据、模拟对象、占位或只在界面上示意。拿不准就写 mock 并说明。'
-        + '节点1到8个，每个至少一个来源文件。只使用实际提供摘录的路径；每个文件只能分配给一个节点。missing最多4项，只列 requirements 或项目目标明确需要、但摘录中看不到实现的部分，不要凭空扩展需求。'
+        + '节点1到8个，每个至少一个来源文件。只使用实际提供摘录的路径；每个文件只能分配给一个节点。missing最多4项，只列 requirements 或项目目标明确需要、但摘录中完全没有的部分，不要凭空扩展需求；已有占位、待开发或模拟实现的部分标为该节点的 mock，不要再列进 missing。dev 层不写 maturity。name 根据摘录内容判断，不要照搬 project 字段里的文件夹名。'
         + '职责和成熟度都是推测，不是功能验收。文档中的愿望不能当作已实现。不要生成关系线。'
       : task === 'trial' ? '返回 JSON {"steps":[{"action":"用户可执行的一个试用动作","expected":"应看到的具体效果"}]}，1到6步。针对提供的原始要求及所有补充，不可把否定、人数、权限、隐私或条件反转。只生成建议的试用步骤，不执行、不声称通过。缺乏环境信息时在动作中写明先决条件，不编造网址和账号。'
       : task === 'trouble' ? '返回 JSON {"summary":"目前卡住在哪里","impacts":["对使用的影响"],"nodes":[],"possibleAdditions":[],"unknowns":["未知原因"],"sources":[],"nextSteps":[{"label":"下一步选项","reason":"能确认什么及代价","request":"给主 AI 的明确修改或检查要求草稿"}]}。nextSteps最多3项，其余数组最多8项。只从trouble中实际记录的检查、操作和试用反馈说明尝试和失败。相同检查连续失败不证明同一根因；修改发生在两次检查之间不证明针对该故障。先说明现象与已尝试，再给有取舍的下一步选项。原因是推测就说明，不把历史失败说成当前失败，不声称已修好。request以“请”开头，保留用户限制，不要求重置、删除数据、泄露凭证或批准权限。材料不足时说明还缺什么。'

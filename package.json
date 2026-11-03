@@ -39,6 +39,7 @@
     "smoke:standard": "npm run build && node scripts/smoke-standard.mjs",
     "smoke:desktop": "npm run build && node scripts/smoke-desktop.mjs",
     "smoke:guide": "npm run build && node scripts/smoke-guide-desktop.mjs",
+    "eval:sidebar": "npm run build && node scripts/eval-sidebar.mjs",
     "dev:guide": "npm run build && node scripts/smoke-guide-desktop.mjs --serve",
     "smoke:continuity": "npm run build && node scripts/smoke-continuity.mjs",
     "check:continuity": "node evals/continuity/verify-fixture.mjs",

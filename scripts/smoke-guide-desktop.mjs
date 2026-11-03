@@ -146,7 +146,7 @@ if (!process.versions.electron) {
               const source = JSON.parse(options.messages.at(-1).content.find(part => part.type === 'text').text);
               const files = source.files.filter(row => ['index.html', 'app.js'].includes(row.file));
               yield { type: 'text-delta', index: 0, text: JSON.stringify({ summary: '一个帮助用户每天回答问题的页面，这是测试模型的固定概览。',
-                missing: [{ title: '账号登录', layer: 'external', purpose: '换手机继续看需要识别同一个人' }], nodes: files.map(row => ({ layer: row.file === 'index.html' ? 'page' : 'data', maturity: row.file === 'index.html' ? 'works' : 'mock', maturityReason: '固定测试推测', title: row.file === 'index.html' ? '每日问题页面' : '回答保存', purpose: '推测承担页面展示或回答保存职责。', impact: '本机保存可能无法跨设备，需要实际验证。', files: [row.file] })), unknowns: ['尚未验证跨设备和权限行为。'] }) };
+                name: '每天一个问题', missing: [{ title: '账号登录', layer: 'external', purpose: '换手机继续看需要识别同一个人' }], nodes: files.map(row => ({ layer: row.file === 'index.html' ? 'page' : 'data', maturity: row.file === 'index.html' ? 'works' : 'mock', maturityReason: '固定测试推测', title: row.file === 'index.html' ? '每日问题页面' : '回答保存', purpose: '推测承担页面展示或回答保存职责。', impact: '本机保存可能无法跨设备，需要实际验证。', files: [row.file] })), unknowns: ['尚未验证跨设备和权限行为。'] }) };
               yield { type: 'finish', reason: { kind: 'stop' } }; return;
             }
             if (options.system.includes('任务类型：goal') || options.system.includes('任务类型：changes')) {

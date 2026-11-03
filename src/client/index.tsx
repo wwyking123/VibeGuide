@@ -41,6 +41,7 @@ function GearIcon() {
 export function GuidePanel({ sessionId, rpc }: { sessionId: string; rpc: Rpc }) {
   const [tab, setTab] = useState<GuideTab>('progress');
   const [sending, setSending] = useState<string>();
+  const [productName, setProductName] = useState<string>();
   const [focus, setFocus] = useState<Focus>();
   const focusIdentity = useRef<string>();
   focusIdentity.current = focus ? JSON.stringify(focus.ref) : undefined;
@@ -76,7 +77,7 @@ export function GuidePanel({ sessionId, rpc }: { sessionId: string; rpc: Rpc }) 
       const next = await rpc<GuideSnapshot>('getSnapshot', { sessionId }, AbortSignal.any([controller.signal, AbortSignal.timeout(10000)]));
       if (!controller.signal.aborted && active.current && epoch === generation.current && read.current === controller) {
         if (project.current && project.current !== next.scope.projectId) {
-          explanation.current?.abort(); setQuestion(''); setFocus(undefined); setTab('progress');
+          explanation.current?.abort(); setQuestion(''); setFocus(undefined); setTab('progress'); setProductName(undefined);
         }
         project.current = next.scope.projectId;
         setSnapshot(next); setReadError('');
@@ -197,7 +198,7 @@ export function GuidePanel({ sessionId, rpc }: { sessionId: string; rpc: Rpc }) 
   return <section ref={panel} className="vg-panel" aria-label="VibeGuide 理解助手" data-testid="vibeguide-panel">
     <style>{styles}</style>
     <div className="vg-content">
-    <div className="vg-top"><strong>{snapshot?.projectName ?? '当前项目'}</strong><div className="vg-tools">
+    <div className="vg-top"><strong title={snapshot ? `项目文件夹：${snapshot.projectName}` : undefined}>{productName ?? snapshot?.projectName ?? '当前项目'}</strong><div className="vg-tools">
       <button className="vg-icon" aria-label="刷新进展" title="刷新进展" onClick={() => void refresh(true)} disabled={refreshing}><RefreshIcon/></button>
       {snapshot && <button className="vg-icon" aria-label="设置" title="设置" aria-pressed={tab === 'settings'} onClick={() => setTab(tab === 'settings' ? 'progress' : 'settings')}><GearIcon/></button>}</div></div>
     {snapshot && <nav className="vg-tabs" aria-label="侧栏内容">{(['progress', 'structure'] as const).map(item => <button key={item} aria-pressed={tab === item} onClick={() => setTab(item)}>{{ progress: '进展', structure: '项目结构' }[item]}</button>)}{tab === 'settings' && <span className="vg-tab-note">设置</span>}</nav>}
@@ -226,7 +227,7 @@ export function GuidePanel({ sessionId, rpc }: { sessionId: string; rpc: Rpc }) 
         {delivery.notice && <p className="vg-notice">{delivery.notice}</p>}
       </article>)}
       </div>
-      <ProjectPanels key={snapshot.scope.projectId} answers={answers} tab={tab} snapshot={snapshot} rpc={rpc} onFocus={value => { setFocus(value); panel.current?.querySelector<HTMLTextAreaElement>('.vg-composer textarea')?.focus(); }} onChanged={() => void refresh(true)} handoff={{ send: source => void handoff(source), sending, ready: snapshot.model.status === 'ready',
+      <ProjectPanels key={snapshot.scope.projectId} answers={answers} tab={tab} snapshot={snapshot} rpc={rpc} onFocus={value => { setFocus(value); panel.current?.querySelector<HTMLTextAreaElement>('.vg-composer textarea')?.focus(); }} onChanged={() => void refresh(true)} onName={setProductName} handoff={{ send: source => void handoff(source), sending, ready: snapshot.model.status === 'ready',
         sent: new Set(snapshot.inputs?.filter(row => row.handoff && row.state !== 'failed').map(row => handoffKey(row.handoff!))) }} onQuestion={value => { setQuestion(value); panel.current?.querySelector<HTMLTextAreaElement>('.vg-composer textarea')?.focus(); }}/>
     </>}
     </div>
@@ -286,7 +287,7 @@ const styles = `
 .vg-receipt{padding:2px 0 10px;margin:0 0 12px;border-bottom:1px solid var(--vg-line)}.vg-receipt-state{font-size:12px;color:var(--vg-ok);font-weight:600}.vg-receipt-unknown,.vg-receipt-pending,.vg-receipt-dispatching,.vg-receipt-queued{color:var(--vg-accent)}.vg-receipt-failed{color:var(--vg-warn)}.vg-receipt summary{font-weight:400;color:var(--vg-sub);font-size:12px}
 .vg-badge{flex-shrink:0;font-size:11px;padding:1px 8px;border-radius:10px;white-space:nowrap;color:var(--vg-sub)}.vg-badge-try{background:var(--vg-blue-bg);color:var(--vg-blue)}.vg-badge-done{color:var(--vg-ok)}
 .vg-text{white-space:pre-wrap;overflow-wrap:anywhere}.vg-notice{padding:8px 10px;border-radius:7px;background:var(--vg-amber-bg);color:var(--vg-amber);font-size:12px}.vg-md p:first-child{margin-top:6px}
-.vg-summary{margin:0 0 6px}.vg-empty{padding:12px 0}.vg-empty button{margin-top:8px}
+.vg-summary{margin:0 0 6px}.vg-intro{padding:4px 0 8px}.vg-intro p{margin:0 0 6px}.vg-intro .vg-actions button{border-radius:14px}.vg-empty{padding:12px 0}.vg-empty button{margin-top:8px}
 .vg-layers{margin:4px 0 12px}.vg-link-down{text-align:center;color:var(--vg-faint);font-size:12px;margin:4px 0 -6px}
 .vg-panel .vg-part{display:flex;width:100%;justify-content:space-between;align-items:flex-start;gap:8px;text-align:left;padding:8px 10px;margin-top:6px;border:1px solid var(--vg-line);border-radius:8px;font-size:13px}
 .vg-panel .vg-part[aria-pressed=true]{background:var(--vg-violet-bg);border-color:transparent;color:var(--vg-violet)}.vg-panel .vg-part[aria-pressed=true] .vg-part-sub{color:var(--vg-violet)}.vg-panel .vg-part-goal{border-color:var(--vg-blue);background:var(--vg-blue-bg)}
