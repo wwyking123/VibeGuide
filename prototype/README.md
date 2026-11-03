@@ -1,6 +1,6 @@
 # DeepSeek Harness × VibeGuide 集成原型
 
-> 此原型为旧方向对照材料：用户已反馈侧栏解释不符合预期。最新方向是 [让原生 AI 回答直接可理解](../docs/CONVERSATION_FIRST_DESIGN.md)，本 HTML 尚未据此重做。
+> 此原型为旧方向对照材料：用户已反馈侧栏解释不符合预期。最新方向是 [让原生 AI 回答直接可理解](../docs/archive/CONVERSATION_FIRST_DESIGN.md)，本 HTML 尚未据此重做。
 
 用现代浏览器打开 [index.html](index.html)。单文件包含 HTML、CSS、JavaScript 和公司网站示意，无需安装依赖或联网。这是宿主内插件的交互概念，并未运行或安装真实 DeepSeek Harness 插件。
 

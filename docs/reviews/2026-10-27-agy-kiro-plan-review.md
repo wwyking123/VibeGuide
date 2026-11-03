@@ -12,9 +12,9 @@
 
 审查对象：
 
-- [产品文档 v2.1](../VIBEGUIDE_PRODUCT_V2_1.md)
-- [技术设计 v2.1](../VIBEGUIDE_TECHNICAL_DESIGN_V2_1.md)，含第 23–27 章复用方案
-- [开源复用研究](../OPEN_SOURCE_REUSE_RESEARCH_2026_10_26.md)
+- [产品文档 v2.1](../archive/VIBEGUIDE_PRODUCT_V2_1.md)
+- [技术设计 v2.1](../archive/VIBEGUIDE_TECHNICAL_DESIGN_V2_1.md)，含第 23–27 章复用方案
+- [开源复用研究](../archive/OPEN_SOURCE_REUSE_RESEARCH_2026_10_26.md)
 - [交互原型](../../prototype/v2.1/index.html)、现有 `src/` 与安装脚本
 - 已固定提交的本地上游源码副本；其中 dsh-explain 为 `15504c26fe018008208c9975228763a4b523edaa`，Harness 调研快照为 `22ddee3792402c3e70ec5f86a63c3e3e895a2f60`
 

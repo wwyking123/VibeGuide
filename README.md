@@ -2,194 +2,59 @@
 
 **Make technical systems legible to non-technical people.**
 
-让 DeepSeek Harness 中同一个开发 AI 直接说清楚：准备做什么、需要你决定什么、实际做到了什么。用户继续使用原来的对话与提问界面。
+DeepSeek Harness 的插件，面向不懂技术、用 AI 做产品的人：
 
-当前安装版：**0.2.0-alpha.6，开发验证版**。macOS Harness 桌面版 `0.2.1-rc.2` / `0.2.1-rc.3` 统一使用 **VibeGuide** 模式。原项目续接版包含白话沟通、需求澄清、项目续接及下述六项开发能力；新版侧栏的范围见下文。旧 CLI `0.1.0-rc.6` 仍只提供沟通规则。完整模型对照评测与用户理解验收尚未完成。
+- **白话沟通规则**：让主对话里的开发 AI 直接说清楚准备做什么、需要你决定什么、实际做到了什么。
+- **VibeGuide 侧栏**：随时问看不懂的地方，看项目做到哪一步；有具体改法时一键发到主对话。
 
-**v2.2 正式开发已开始：** 原生侧栏、按需独立讲解、当前问题读取和宿主通道已实现第一批代码，可通过下方 `--guide` 安装试用；开发入口为 `npm run smoke:guide` / `npm run dev:guide`。第一批实际操作状态、改动和检查记录、同会话讲解恢复已实现；第二批已接入统一输入、澄清、原题作答引导、持久修改转交与真实回执；第三批已接入按需项目概览、只读职责图、跨会话讲解与纠正、按要求逐步记录试用反馈；第四批已接入逐条要求的范围核对与完成状态、可见的历史约定转交、实际改动影响和按目标定位。第五批补上故障与尝试梳理、结构历史对比、讲解偏好与本地常用概念、侧栏用量与次数预算。完成需有对应改动、适用检查、明确范围和逐项试用反馈，不由 AI 自述决定。实际范围和验证证据见 [v2.2 开发状态](docs/IMPLEMENTATION_STATUS_V2_2.md)。下方“已实现”和未带 `--guide` 的安装命令仍描述原项目续接版。
+当前版本 **0.2.0-alpha.8，开发验证版**。适用于 macOS 桌面版 Harness `0.2.1-rc.2` / `0.2.1-rc.3`；同一 0.2.x 线上更新的 Harness 也能加载，设置页会提示“还没一起测试过”。还没有做过真人试用。
 
-**侧栏解释按需生成：** 当前代码打开或刷新侧栏不会调用解释模型；用户主动提问、解释原题、生成概览或准备试用步骤时才调用模型，有效缓存优先。2026-10-27 已取消自动摘要计划，并按用户最新决定删除“查看依据”及原文展示，不添加替代求助入口；现有提问框固定在底部。现在显示实际读取、修改、检查和等待状态，检查报告原生执行结果；具体要求完成情况另按确认范围、适用检查和逐项试用反馈核对。记录在本机保存，重开恢复；项目或文件变化时旧讲解标为历史。详见[产品设计](docs/VIBEGUIDE_PRODUCT_V2_2.md)。
+## 侧栏怎么用
 
-**2026-11-02 起的侧栏（见[决定记录](docs/reviews/2026-11-02-sidebar-simplification.md)）：**
+- **进展**：一句话状态；卡住时有排障卡；你在主对话提过的要求按“还在做 / 可以试用了 / 已完成”列出。
+- **项目结构**：按“用户看到的 → 背后的规则 → 数据存在哪里 → 外部服务”四层列出各部分，标出能用 / 模拟 / 还没做；文档、设计稿和测试脚本收在“开发用的资料”里。顶部显示 AI 总结的产品名。
+- **提问**：底部输入框只用来问，不会发出开发任务。第一次打开时有两个示例问题。
+- **修改**：在主对话直接说，包括“标题太长了”这类不满意，侧栏会记成要求。讲解里有具体改法时，点“发到主对话”，侧栏 AI 写好要求直接发出，算作你的要求，并自动带上本项目相关的旧约定。
+- **设置（齿轮）**：讲解方式、每日和每轮次数上限、历史记忆。
 
-- **当前进展**：一句话状态、卡住时的排障卡、本会话的要求卡（还在做 / 可以试用了 / 已完成）。
-- **项目结构**：概览摘要和职责图，点一个部分看它负责什么。
-- **设置（齿轮）**：讲解方式、每日次数、历史记忆。
-- 输入框只用来提问；修改请在主对话说。讲解里有具体改法时，点“把这个改法发到主对话”，侧栏 AI 写好要求后直接发出，算作你的要求。
+打开、刷新和切页不调用模型。提问、生成概览和一键代发才会调用当前会话选的模型，计入次数上限。产品决定见[侧栏精简与转交方式](docs/reviews/2026-11-02-sidebar-simplification.md)。
 
-## 已实现
+## 安装与更新
 
-- 生成回答前加入持续沟通规则，覆盖方案、可行性、业务选择、开发进展、失败和完成说明。
-- 安装为独立的 **VibeGuide 会话预设**，完整复制本机 Harness 标准开发配置，再添加插件。
-- 使用宿主原有模型、标准工具和原生提问；已验证桌面版 31 项、旧 CLI 25 项工具完整保留。插件自身不发模型请求，不需要额外 API key。
-- 只有笼统产品想法时，先问 2–3 个影响使用流程和规则的关键问题，等待回答后再写代码；明确需求、小修改或明确委托原型时继续推进。
-- VibeGuide 在本机保存项目要求、来源、纠正和分开的任务进度；新会话在同一项目中可以读取。保留原有工具，额外增加三个项目与偏好工具；普通模式不加载这些能力。
-- 写入检查版本、保存后读回核对；保存失败、结果未知、并发冲突分别返回。删除记录不改代码，文件变化提示不等于自动回滚。
-- 项目共识、结构化验收记录与失效提示、静态改动影响与回归建议、Supabase 接入指南、跨会话个人偏好、任务相关分页和归档。具体用法和范围见[六项功能说明](docs/WORKBENCH.md)。
-- 13 个中文场景及中性的三组对照评审标准。
-
-例如，规则要求把“选 CMS 还是静态生成？”转为“同事编辑后直接对客户展示，还是先由你看过再发布？”。这是预期行为示例，尚不是实测模型输出。
-
-## 开发与检查
-
-需要 Node.js ≥ 22.18。旧 CLI 安装器面向 macOS/Linux（Linux 尚未实测），桌面版安装器面向 macOS。已验证 CLI `0.1.0-rc.6`（Node.js 24.15.0）与桌面版 `0.2.1-rc.2` / `0.2.1-rc.3`。暂不支持其他宿主版本或 Windows。
-
-获取源码并检查：
+需要 Node.js ≥ 22.18 和 `/Applications/DeepSeek Harness.app`。
 
 ```sh
 git clone https://github.com/wwyking123/VibeGuide.git
 cd VibeGuide
 npm ci
-npm test
-npm run check:evals
-npm run check:continuity
+npm run install:desktop
 ```
 
-安装了兼容的旧 CLI 时，还可以运行：
+完全退出并重新打开 Harness，新建会话，在输入框上方的模式菜单选 **VibeGuide**，从右侧打开 VibeGuide 侧栏。以后更新也是同一条命令。
+
+安装器把插件放在 `~/.dsh/plugins/` 下，在 `profiles/desktop/cordis.patch.yml` 增加一项声明，原文件备份到 `~/.dsh/.vibeguide-backups/`。不会改动模型设置和其他配置。
+
+- **停用**：新会话选「标准模式」。
+- **移除**：关闭 Harness，从 `cordis.patch.yml` 删掉 `id: vibeguide-presets` 那一项，再移走它引用的插件目录。
+- **记录**：侧栏记录保存在 `~/.dsh/vibeguide-p0-state/`（沿用旧路径），停用不会删除。
+- **Harness 换到 0.2 以外的版本**：侧栏会停用并提示更新 VibeGuide，主对话不受影响。
+
+## 开发与检查
 
 ```sh
-npm run smoke:harness
-npm run smoke:standard
+npm test               # 单元测试
+npm run smoke:guide    # 在隔离的真实 Harness 里走完整流程，用固定回答，不调用模型
+npm run dev:guide      # 启动同样的隔离环境，供浏览器里查看侧栏
+npm run eval:sidebar   # 用你登录的 DeepSeek 账号做真实模型评测，会消耗额度
 ```
 
-两个 smoke 命令从本机 `dsh` 安装目录加载真实宿主代码，使用临时数据目录，不调用模型、启动浏览器或服务器，也不修改日常 Harness 配置。完整检查确认 25 项工具定义完全一致，并成功创建和销毁真实 Agent。
-
-若无法自动找到宿主，可设置 `VIBEGUIDE_HARNESS_ROOT` 为 `@deepseek-ai/dsh` 的实际安装目录。
-
-## 安装到 Harness
-
-### 新版理解与沟通侧栏（v2.2 第五批）
-
-适用于 macOS 桌面版 `0.2.1-rc.2` / `0.2.1-rc.3`。安装或更新现有 VibeGuide：
-
-```sh
-npm run build
-node scripts/install-desktop.mjs --home "$HOME/.dsh" --guide --upgrade
-```
-
-重启 Harness，在同一工作区新建会话，选择唯一的 **VibeGuide** 模式。从右侧开始页的 VibeGuide 入口打开侧栏；有对话后，也可以点击对话顶栏的 VibeGuide。侧栏仅在主动追问、解释原题、生成概览或准备试用步骤时调用当前会话所选模型，会消耗该模型的额度；打开和刷新不生成讲解。原生问题仍在主对话原卡作答。
-
-此版本启用新版侧栏与白话沟通规则，**不加载旧版项目记录工具和动态记忆**。旧记录、旧插件副本和原配置备份保留，但不会自动导入侧栏；修改转交、同项目跨会话讲解记录和只读项目职责图已开放。仍需旧续接功能时，使用下方不带 `--guide` 的更新命令。两种安装均使用一个 VibeGuide 模式，不会增加第二个入口。
-
-侧栏的用法：
-
-- **提问**：在底部输入框问“换手机还能看到吗？”，只解释，不会发任何开发任务。“选第二个”会提示回主对话原题作答。
-- **修改**：在主对话直接说，包括“标题太长了”这类不满意；侧栏会把它记成要求卡。
-- **一键代发**：讲解里有具体改法时，下方出现“把这个改法发到主对话”。点击后侧栏 AI 写出给主 AI 的要求并直接发送，同时附上本项目相关的旧约定；这条要求算作你的要求。发送前先落盘，结果不确定时只核对、不重发。
-- **要求卡**：主 AI 做出对应改动后显示“可以试用了”，按主对话里说的重点试一试；觉得没问题可点“没问题了”，不满意直接在主对话说。只看本会话自己的改动和检查。
-- **项目结构**：点“生成项目概览”查看各部分职责和使用影响；职责是 AI 推测，连线只来自观察到的代码引用。
-- **设置**：讲解语言、篇幅、每日与每轮次数上限；历史记忆里可以修改或停用旧约定。
-
-打开、刷新和切页不调用模型；提问、生成概览和一键代发才调用，计入次数上限。真实模型讲解质量和非技术用户测试仍未完成。
-
-`npm run smoke:guide` 在隔离配置中验证真实安装升级及宿主集成，使用本地固定回答，不调用真实模型。也可用 `node scripts/smoke-guide-desktop.mjs --installed <安装输出的 packageDirectory>` 验证已安装副本，不更改日常配置或聊天。
-
-Harness 升级不会自动更新 VibeGuide。若升级后侧栏无法连接，请先确认新版本已列入上述兼容范围，再构建并重新执行带 `--guide --upgrade` 的安装命令，然后重启。安装器和后台共用 `src/guide/host/compatibility.ts` 的已验证版本清单，不默认放行未来版本。
-
-### 当前 macOS 桌面版
-
-适用于 `/Applications/DeepSeek Harness.app`，宿主版本 `0.2.1-rc.2` / `0.2.1-rc.3`。在源码目录运行：
-
-```sh
-npm run build
-node scripts/install-desktop.mjs --home "$HOME/.dsh"
-```
-
-安装器将插件保存到数据目录的 `plugins/` 下，在 `profiles/desktop/cordis.patch.yml` 中增加预设声明，并把原文件原样备份到 `.vibeguide-backups/`。不会更改已有模型设置或默认预设。
-
-**完全退出并重新打开 Harness，创建新会话，点击输入框上方、工作区名称右侧的「标准模式 ▾」，选择 VibeGuide，再发送需求。** 已开始的旧会话保持原配置。新版桌面版不读取旧 CLI 的 `.agent-presets/` 目录，不能混用两种安装方式。
-
-`npm run smoke:desktop` 会在临时数据目录启动本机桌面版的真实宿主，验证完整安装、31 项标准工具、会话隔离和原生提问，然后关闭临时服务。不会调用模型或打开浏览器。
-
-### 更新已有安装与合并旧模式
-
-已安装 VibeGuide 或旧 P0 模式时，执行：
-
-```sh
-npm run build
-node scripts/install-desktop.mjs --home "$HOME/.dsh" --upgrade
-```
-
-重启 Harness，在新会话的模式菜单选择 **VibeGuide**。更新会备份配置、准备新插件副本，再把原来的两个入口合并为一个；项目记录沿用原位置，旧插件副本和历史聊天文件保留。日常直接说“你记住了哪些要求”“继续上次的报名项目”等即可。
-
-宿主不支持把已经开始的 P0 聊天原地切换预设：合并后请在**同一个工作区新建 VibeGuide 会话**，读取最近成功保存的项目记录。旧聊天不会自动导入，新模式也不能保证恢复尚未保存的内容。旧 `--continuity` 参数仅为脚本兼容保留，不再创建第二模式。
-
-`npm run smoke:continuity` 在两个先后启动的独立测试进程中验证保存、重开、纠正、原生选项来源和项目隔离，不调用模型。它验证宿主接口与记录机制；真实 AI 是否正确提炼要求、及时保存和解释清楚，仍需按[连续任务试用材料](evals/continuity/README.md)亲自体验。记录位置、限制和异常处理见 [P0 开发与试用说明](docs/CONTINUITY.md)。
-
-### 旧 CLI 版本
-
-先生成一个仅用于开发的预设副本：
-
-```sh
-npm run prepare:harness
-```
-
-输出位于 `artifacts/dsh-home/.agent-presets/vibeguide/`，包含完整预设与独立插件。这个步骤不会启用到日常会话。重复执行会拒绝覆盖已有目录。
-
-准备在日常 Harness 中试用时，在源码目录运行下面的命令。`--home` 必须对应 Harness 使用的数据目录，默认是 `~/.dsh`；自定义过 `DSH_HOME` 则替换为自定义目录。
-
-```sh
-npm run build
-node scripts/install-preset.mjs --home "$HOME/.dsh"
-```
-
-随后使用 Harness Web 界面的预设选择功能，选择 **VibeGuide** 创建新会话，沿用宿主已有模型设置。已打开的界面可能需要刷新；本次未进行浏览器端验证。不要把插件加入全局 `cordis.patch.yml`，否则会影响所有会话。
-
-rc.6 的 headless 模式没有 `--preset` 参数，也不会挂载此预设；本版不提供 headless 入口。现有会话即时切换不在本版范围内。
-
-### 更新、停用与打包
-
-- 停用：新会话选择「标准模式」。不要删除仍需恢复的旧会话依赖的预设。
-- 桌面版更新：使用 `--upgrade`。未带此参数的重复安装会拒绝覆盖。插件不会自动跟随源码或宿主升级。
-- 桌面版移除：先关闭 Harness，从 `profiles/desktop/cordis.patch.yml` 移除 `id: vibeguide-presets` 对应的插入项，再移走该项引用的插件目录。备份用于核对，不应直接覆盖安装后新增的其他设置。
-- 已有项目记录保留在 `<DSH_HOME>/vibeguide-p0-state/`（兼容旧路径），停用模式不删除它们。
-- 旧 CLI 更新：使用新 ID 安装，例如 `--id vibeguide-next`，重启 Harness 后创建新会话。安装器拒绝覆盖已有目录和宿主自带预设名。
-- 旧 CLI 移除：停止 Harness 后，将 `.agent-presets/vibeguide` 文件夹移到预设目录之外保存；移回原处即可恢复。若曾设为默认，先在宿主改回 standard。
-- 打包：`mkdir -p artifacts && npm pack --pack-destination artifacts`。生成本地安装包，不发布到 npm。解压后的包自带 `dist/`，可直接运行对应宿主的安装脚本。
-
-## 当前边界
-
-### 亲自进行对话对照
-
-macOS 桌面版 `0.2.1-rc.2`、已登录 DeepSeek 账户时，可创建两个独立的 Harness Web 试用环境：
-
-```sh
-npm run build
-node scripts/manual-compare.mjs prepare
-node scripts/manual-compare.mjs start --directory <prepare 输出的目录>
-```
-
-打开 start 输出的 A、B 链接，按[手动评测步骤](evals/MANUAL_COMPARISON.md)分别对话。A 为默认模式，B 为 VibeGuide；两个空项目使用相同模型设置。准备器只复制模型设置和必要账户凭据，不复制历史，且不修改日常桌面配置。操作系统限制跨组文件读取和访问另一组的 Harness 端口；开始前实际检查直接读取、子进程与符号链接。不是完整虚拟机隔离，共享外部服务仍可能使评测互相影响。
-
-新建评测环境的 B 组使用统一 VibeGuide，包含项目记录工具；两组的差异包括功能，不能称为仅提示词不同。此前已经生成的评测环境保留其冻结的旧插件，不会被源码更新自动改动。
-
-也可以直接使用两个已有目录，测试生成的代码会写回各自目录：
-
-```sh
-node scripts/manual-compare.mjs prepare \
-  --standard-workspace "/path/to/default-test" \
-  --vibeguide-workspace "/path/to/vibeguide-test"
-```
-
-两个目录必须独立且不能互相嵌套。可以分别从相同的原始提示词开始；若一组已生成文档或代码，不要把这些产物复制给另一组。准备器不自动覆盖或同步项目文件。聊天记录仍保存在独立的评测数据目录，项目文件访问限制只放行各自的工作区。
-
-停止本轮：`node scripts/manual-compare.mjs stop --directory <本轮目录>`。start 恢复原有历史；新一轮使用 prepare 生成新目录。评测目录含登录凭据副本，请留在本地，分享时只导出对话和评分。准备和检查不会自动调用模型；发送消息后正常使用账户额度。
-
-### 效果验证范围
-
-接入通过不等于沟通效果通过。模型可能不遵循规则；原生问答 UI 操作、长对话压缩和用户理解验收仍待验证。已验证本地记录跨进程读取，但没有独立事实核验服务：用户原话来源可以验证，摘要含义与任务完成判断仍需实际评测。规则和动态上下文带来的实际费用、时延增量尚未系统测量。
-
-`node scripts/eval-kickoff.mjs --live` 可通过本机已登录的 DeepSeek 账户进行四个有限的模型响应检查，会消耗模型额度。每例最多三次调用，只执行隔离的项目记录工具及明确允许的只读检查；修改项目或未允许的工具意图记录后停止。模糊需求案例会向模型提供受控的“问题待回答”结果，观察是否等待；不验证真实提问界面，也不等同于完整开发过程或真实用户理解评测。结果保存在本地忽略目录 `evals/runs/`。
+`node scripts/smoke-guide-desktop.mjs --installed <插件目录>` 可以检查已安装的副本。评测用例在 `evals/sidebar/`，结果写到 `evals/runs/`（不进仓库）。最近一次结果见[侧栏模型评测](docs/reviews/2026-11-03-sidebar-model-eval.md)。
 
 ## 项目资料
 
-- [当前目标：产品文档 v2.2](docs/VIBEGUIDE_PRODUCT_V2_2.md) · [配套技术设计 v2.2](docs/VIBEGUIDE_TECHNICAL_DESIGN_V2_2.md)（设计基线，未表示侧栏功能已实现）
-- [历史产品设计与功能优先级（2026-10-21）](docs/PRODUCT_DESIGN.md) · [早期实施计划与开发记录](docs/DELIVERY_PLAN.md)
-- [P0 开发与试用说明](docs/CONTINUITY.md) · [连续任务试用材料](evals/continuity/README.md)
-- [开发说明与验证记录](docs/DEVELOPMENT.md)
-- [沟通规则](prompts/core.md) · [评测案例](evals/scenarios.json) · [评审标准](evals/RUBRIC.md)
-- [原生对话设计](docs/CONVERSATION_FIRST_DESIGN.md)
-- [历史首版规格](docs/IMPLEMENTATION_SPEC.md)
-- [宿主与参考项目研究](docs/RESEARCH.md) · [用户痛点研究](docs/USER_RESEARCH.md)
+- [产品文档 v2.2](docs/VIBEGUIDE_PRODUCT_V2_2.md) · [技术设计 v2.2](docs/VIBEGUIDE_TECHNICAL_DESIGN_V2_2.md)：与后来的决定冲突时，以 `docs/reviews/` 里的记录为准
+- [沟通规则](prompts/core.md)
+- [用户痛点研究](docs/USER_RESEARCH.md) · [宿主与参考项目研究](docs/RESEARCH.md)
+- [历史文档](docs/archive/README.md)：旧版“项目续接”、六项开发能力、旧 CLI 版本等，代码已在 0.2.0-alpha.8 删除
 
-`prototype/` 是用户已否定的早期侧栏演示，仅保留作设计对照；当前插件不使用该页面。
+`prototype/` 是早期被否定的侧栏演示，只留作设计对照。

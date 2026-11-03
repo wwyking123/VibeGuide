@@ -73,11 +73,11 @@ if (!process.versions.electron) {
       for (let pass = 0; pass < 2; pass++) {
         const install = spawnSync(process.execPath, [
           '--expose-internals', fileURLToPath(new URL('./install-desktop.mjs', import.meta.url)),
-          '--home', temporary, '--guide', '--upgrade',
+          '--home', temporary, '--upgrade',
         ], { env: process.env, encoding: 'utf8', timeout: 30000 });
         assert.equal(install.status, 0, install.stderr);
         const result = JSON.parse(install.stdout);
-        assert.equal(result.edition, 'sidebar-p5');
+        assert.equal(result.edition, 'sidebar');
         assert.equal(result.storageRoot, storageRoot, 'legacy storage location must survive repeated sidebar upgrades');
         assert.equal(await readFile(result.backup, 'utf8'), before);
         assert.equal(await readFile(recordFile, 'utf8'), '{"retained":true}\n');

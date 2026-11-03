@@ -1,7 +1,7 @@
 {
   "name": "vibeguide",
-  "version": "0.2.0-alpha.7",
-  "description": "Understandable development conversations inside DeepSeek Harness",
+  "version": "0.2.0-alpha.8",
+  "description": "Plain-language development conversations and a guide sidebar inside DeepSeek Harness",
   "private": true,
   "type": "module",
   "engines": {
@@ -33,16 +33,10 @@
   "scripts": {
     "build": "tsc && node scripts/build-client.mjs",
     "test": "npm run build && node --test tests/*.test.mjs",
-    "check:evals": "node scripts/check-evals.mjs",
-    "prepare:harness": "npm run build && node scripts/install-preset.mjs --home ./artifacts/dsh-home",
-    "smoke:harness": "npm run build && node scripts/smoke-harness.mjs",
-    "smoke:standard": "npm run build && node scripts/smoke-standard.mjs",
-    "smoke:desktop": "npm run build && node scripts/smoke-desktop.mjs",
     "smoke:guide": "npm run build && node scripts/smoke-guide-desktop.mjs",
     "eval:sidebar": "npm run build && node scripts/eval-sidebar.mjs",
     "dev:guide": "npm run build && node scripts/smoke-guide-desktop.mjs --serve",
-    "smoke:continuity": "npm run build && node scripts/smoke-continuity.mjs",
-    "check:continuity": "node evals/continuity/verify-fixture.mjs",
+    "install:desktop": "npm run build && node scripts/install-desktop.mjs --home \"$HOME/.dsh\" --upgrade",
     "prepack": "npm run build"
   },
   "devDependencies": {

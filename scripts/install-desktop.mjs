@@ -11,12 +11,11 @@ const { values } = parseArgs({ options: {
   app: { type: 'string', default: DEFAULT_APP },
   home: { type: 'string' },
   help: { type: 'boolean' },
-  continuity: { type: 'boolean', default: false },
   guide: { type: 'boolean', default: false },
   upgrade: { type: 'boolean', default: false },
 } });
 if (values.help) {
-  console.log('node scripts/install-desktop.mjs --home <DSH_HOME> [--app <DeepSeek Harness.app>] [--upgrade] [--guide]\n--guide 安装真实进展、持久记录与按需讲解侧栏，不挂载旧记账工具；不带此参数仍安装原项目续接版。两者均使用唯一 VibeGuide 模式。--upgrade 更新已有安装并保留旧记录与插件副本。');
+  console.log('node scripts/install-desktop.mjs --home <DSH_HOME> [--app <DeepSeek Harness.app>] [--upgrade]\n安装白话沟通规则和 VibeGuide 侧栏。--upgrade 更新已有安装并保留旧记录与插件副本。--guide 仅为旧命令兼容保留。');
 } else if (!values.home) {
   console.error('请用 --home 明确指定桌面版数据目录。');
   process.exitCode = 1;
@@ -62,8 +61,8 @@ if (values.help) {
   let published = false;
   let temporaryPatch;
   try {
-    const prepared = await prepareDesktopPlugin(host, packageDirectory, { storageRoot, guide: values.guide });
-    const edition = values.guide ? 'sidebar-p5' : 'continuity';
+    const prepared = await prepareDesktopPlugin(host, packageDirectory, { storageRoot });
+    const edition = 'sidebar';
     const expected = composeDesktopPatch(previous, prepared.patch, values.upgrade);
     let candidate = before.toString('utf8') + '\n\n# VibeGuide desktop preset\n' + host.dump([prepared.patch]);
     try { assert.deepEqual(host.parse(candidate), expected); }

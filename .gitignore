@@ -13,5 +13,5 @@ evals/runs/
 *.pem
 *.key
 .playwright-cli/
-output/playwright/guide-ready.json
+output/
 .gstack/

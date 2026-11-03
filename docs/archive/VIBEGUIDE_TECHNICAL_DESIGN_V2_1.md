@@ -2,7 +2,7 @@
 
 ## 技术架构与实现 v2.1
 
-> 历史版本：当前开发依据为[技术设计 v2.2](VIBEGUIDE_TECHNICAL_DESIGN_V2_2.md)与[产品设计 v2.2](VIBEGUIDE_PRODUCT_V2_2.md)。其中自动摘要等旧规则已被后续用户决定替代；保留本文用于追溯，不作为并行开发目标。
+> 历史版本：当前开发依据为[技术设计 v2.2](../VIBEGUIDE_TECHNICAL_DESIGN_V2_2.md)与[产品设计 v2.2](../VIBEGUIDE_PRODUCT_V2_2.md)。其中自动摘要等旧规则已被后续用户决定替代；保留本文用于追溯，不作为并行开发目标。
 
 **DeepSeek Harness 插件 · 课程项目目标版本**
 

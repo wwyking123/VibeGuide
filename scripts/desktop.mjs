@@ -38,13 +38,11 @@ export async function prepareDesktopPlugin(host, directory, options = {}) {
   }
   await writeFile(join(directory, 'package.json'), JSON.stringify({
     name: 'vibeguide', version: packageJson.version, private: true, type: 'module',
-    ...(options.guide ? {
-      exports: { '.': './dist/guide/plugin.js', './client': './dist/client.js', './package.json': './package.json' },
-      dsh: { client: { platform: 'web', immediately: true, inject: [
-        '@deepseek-ai/dsh-client-ui-sidebar-right', '@deepseek-ai/dsh-client-ui-conversation',
-        '@deepseek-ai/dsh-client-ui-slots', '@deepseek-ai/dsh-connection',
-      ] } },
-    } : {}),
+    exports: { '.': './dist/guide/plugin.js', './client': './dist/client.js', './package.json': './package.json' },
+    dsh: { client: { platform: 'web', immediately: true, inject: [
+      '@deepseek-ai/dsh-client-ui-sidebar-right', '@deepseek-ai/dsh-client-ui-conversation',
+      '@deepseek-ai/dsh-client-ui-slots', '@deepseek-ai/dsh-connection',
+    ] } },
   }, null, 2) + '\n', { mode: 0o600 });
   // Includes outside the profile do not inherit its package lookup fallback.
   // Use this desktop's exact modules, including every nested preset row.
@@ -60,21 +58,17 @@ export async function prepareDesktopPlugin(host, directory, options = {}) {
     config: {
       ...standard.config,
       id: presetId, name: 'VibeGuide', order: 2,
-      description: options.guide ? '用易懂的话沟通开发；在 VibeGuide 侧栏按需看懂进展与选择。' : '用易懂的话先对齐关键需求，再开发；保存项目要求与纠正，支持换会话续接。',
+      description: '用易懂的话沟通开发；在 VibeGuide 侧栏按需看懂进展与选择。',
       plugins: [...hostRows(standard.config.plugins), {
         id: 'vibeguide-communication',
         name: pathToFileURL(join(directory, 'dist', 'index.js')).href,
-      }, ...(options.guide ? [] : [{
-        id: 'vibeguide-continuity',
-        name: pathToFileURL(join(directory, 'dist', 'continuity', 'plugin.js')).href,
-        config: { storageRoot: options.storageRoot ?? join(dirname(directory), 'vibeguide-p0-state') },
-      }])],
+      }],
     },
   };
-  const composition = host.dump([...(options.guide ? [{
+  const composition = host.dump([{
     id: 'vibeguide-guide', name: pathToFileURL(join(directory, 'dist', 'guide', 'plugin.js')).href,
     config: { runtimeAnchor: host.anchor, storageRoot: options.storageRoot ?? join(dirname(directory), 'vibeguide-v2-state') },
-  }] : []), preset]);
+  }, preset]);
   await writeFile(join(directory, 'preset.cordis.yml'), composition, { mode: 0o600 });
   return {
     version: packageJson.version,

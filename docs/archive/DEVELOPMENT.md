@@ -32,7 +32,7 @@
 
 新增 `npm run smoke:continuity`、`npm run check:continuity` 与 `install-desktop.mjs --continuity`。26 项自动测试通过；真实 `0.2.1-rc.2` 宿主在临时数据目录完成独立安装、进程退出/重开、纠正、原生选择来源、Schema/SDK、隔离及损坏降级检查。保存失败/未知使用受控存储测试，未调用模型。具体契约、限制和命令见 [CONTINUITY.md](CONTINUITY.md)。
 
-下一步是按 [连续任务材料](../evals/continuity/README.md)进行真实对话和用户理解试用；未取得的模型行为、用户观察、时延/用量结果不记为通过。没有修改日常 Harness 安装或现有 A/B 项目。
+下一步是按 [连续任务材料](../../evals/continuity/README.md)进行真实对话和用户理解试用；未取得的模型行为、用户观察、时延/用量结果不记为通过。没有修改日常 Harness 安装或现有 A/B 项目。
 
 本轮主 Agent 负责实现、安装器、存储测试、宿主集成验证和文档；两个辅助 Agent 分别负责冻结试用材料及来源测试、只读宿主接口核实与审查，写入范围不重叠。下文保留 alpha.2 / rc.6 的历史接入记录；其中“没有任务记录”仅描述当时的原版白话预设。
 

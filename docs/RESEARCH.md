@@ -2,7 +2,7 @@
 
 核实日期：2026-10-14。来源限官方项目仓库与其文档。本次是文档和部分源码调研，没有安装运行这些项目。当前交付仍是 HTML 概念原型，未实现真实插件；“可以借鉴/改编”不等于已经集成或通过兼容性测试。
 
-已选技术路线：用户明确要求 VibeGuide 集成在 DeepSeek Harness 内，首发形态锁定为 Harness Web 插件。借鉴规格工具的验收结构及 Claude Mods 的交互方式，不再将宿主选择列为待批准事项。真实安装成本和原题回答仍是实现与发布前的验证门槛。用户痛点证据另见[USER_RESEARCH.md](USER_RESEARCH.md)，最新交互与优先级见[INTERACTION_DESIGN.md](INTERACTION_DESIGN.md)。第一版不需要同时集成多个规格框架或自建完整编码Agent；代码地图延后。
+已选技术路线：用户明确要求 VibeGuide 集成在 DeepSeek Harness 内，首发形态锁定为 Harness Web 插件。借鉴规格工具的验收结构及 Claude Mods 的交互方式，不再将宿主选择列为待批准事项。真实安装成本和原题回答仍是实现与发布前的验证门槛。用户痛点证据另见[USER_RESEARCH.md](USER_RESEARCH.md)，最新交互与优先级见[INTERACTION_DESIGN.md](archive/INTERACTION_DESIGN.md)。第一版不需要同时集成多个规格框架或自建完整编码Agent；代码地图延后。
 
 ## 1. 哪些 GitHub 项目最值得看
 
