@@ -23,10 +23,10 @@ export function splitSuggestion(answer: string): { text: string; suggestion?: st
   const suggestion = answer.slice(at + SUGGESTION_MARK.length).replace(/^[\s:：]+/, '').trim().split('\n')[0].trim();
   return { text: answer.slice(0, at).trim(), ...(suggestion && suggestion.length <= 500 ? { suggestion } : {}) };
 }
-/** Uses only APIs verified in the installed rc.2. No business tools or prompt injection. */
+/** Uses only APIs verified in the supported desktop releases. No business tools or prompt injection. */
 export class HarnessAdapter {
   readonly support?: GuideSupport;
-  constructor(readonly ctx: HostContext, readonly bindings: HostBindings, readonly tracker?: ProgressTracker) { if (tracker) this.support = new GuideSupport(tracker.store); }
+  constructor(readonly ctx: HostContext, readonly bindings: HostBindings, readonly tracker?: ProgressTracker, readonly untestedHost?: string) { if (tracker) this.support = new GuideSupport(tracker.store); }
 
   async projectFor(sessionId: string) {
     const cut = await this.ctx.sessionQuery.observeSession(sessionId, { projectionMode: 'all' });
@@ -140,6 +140,7 @@ export class HarnessAdapter {
       turn: cut.events.filter((event: any) => event.type === "turn/start").at(-1)?.data?.turn,
       throughSeq, basis, observations: observations.slice(-8), choices,
       model: route ? { status: 'ready', route } : { status: 'not_configured' },
+      ...(this.untestedHost ? { untestedHost: this.untestedHost } : {}),
       limitations: ['主 AI 的汇报不等于检查结果；命令正常结束不代表用户需求已经实现。',
         '文件适用性只覆盖已读取的项目源码文件，不证明外部服务、依赖或用户验收；相关范围暂按项目保守处理。'],
       ...(tracked ? { progress: tracked.progress, explanations: tracked.explanations.map(answer => ({ ...answer,

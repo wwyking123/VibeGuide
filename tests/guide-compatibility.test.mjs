@@ -1,12 +1,13 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { assertDesktopVersion } from '../dist/guide/host/compatibility.js';
+import { assertDesktopVersion, desktopCompatibility } from '../dist/guide/host/compatibility.js';
 import { guideCall } from '../dist/client/rpc.js';
 
-test('desktop compatibility admits verified releases and rejects untested upgrades', () => {
-  assert.doesNotThrow(() => assertDesktopVersion('0.2.1-rc.2'));
-  assert.doesNotThrow(() => assertDesktopVersion('0.2.1-rc.3'));
-  assert.throws(() => assertDesktopVersion('0.2.1-rc.4'), /尚未完成.*兼容验证/);
+test('desktop compatibility keeps later builds of the same line working and refuses others', () => {
+  assert.equal(desktopCompatibility('0.2.1-rc.2'), 'verified');
+  assert.equal(desktopCompatibility('0.2.1-rc.3'), 'verified');
+  for (const later of ['0.2.1-rc.4', '0.2.1-rc.10', '0.2.1', '0.2.5']) assert.equal(desktopCompatibility(later), 'untested', later);
+  for (const other of ['0.2.1-rc.1', '0.2.0', '0.3.0', '1.2.1', 'nightly']) assert.throws(() => assertDesktopVersion(other), /不兼容.*更新 VibeGuide/, other);
 });
 
 test('missing backend gives an actionable explanation without raw transport details', async () => {

@@ -5,7 +5,7 @@ import { readFile } from 'node:fs/promises';
 import { GuideService } from './service.js';
 import { HarnessAdapter } from './host/adapter.js';
 import { GuideError } from './contracts.js';
-import { assertDesktopVersion } from './host/compatibility.js';
+import { desktopCompatibility } from './host/compatibility.js';
 import { GuideStore } from './store.js';
 import { ProgressTracker } from './progress.js';
 
@@ -19,7 +19,7 @@ export async function apply(ctx: any, config: Config) {
   if (!isAbsolute(config.storageRoot ?? '')) throw new Error('VibeGuide requires an absolute private storage root.');
   const require = createRequire(config.runtimeAnchor);
   const hostPackage = JSON.parse(await readFile(require.resolve('@deepseek-ai/dsh/package.json'), 'utf8'));
-  assertDesktopVersion(hostPackage.version);
+  const untestedHost = desktopCompatibility(hostPackage.version) === 'untested' ? String(hostPackage.version) : undefined;
   const load = (name: string) => import(pathToFileURL(require.resolve(name)).href);
   const [{ TypertRemoteService, Remote, RemoteError }, llm] = await Promise.all([
     load('@deepseek-ai/dsh-typert-protocol'), load('@deepseek-ai/dsh-llm'),
@@ -28,7 +28,7 @@ export async function apply(ctx: any, config: Config) {
   let tracker: ProgressTracker | undefined;
   try { tracker = new ProgressTracker(await GuideStore.open(config.storageRoot)); }
   catch (e) { storageError = e; }
-  const adapter = new HarnessAdapter(ctx, llm, tracker);
+  const adapter = new HarnessAdapter(ctx, llm, tracker, untestedHost);
   const service = new GuideService(adapter);
   await service.communication?.recover();
   let stopped = false;
@@ -116,12 +116,6 @@ export async function apply(ctx: any, config: Config) {
     async saveSupport(request: unknown, signal: AbortSignal) {
       this.owner(); try { if (!service.project) throw new GuideError('unavailable', '记录服务尚未就绪。'); return await service.project.saveSupport(request, signal); } catch (e) { throw failure(e); }
     }
-    async compareStructure(request: unknown, signal: AbortSignal) {
-      this.owner(); try { if (!service.project) throw new GuideError('unavailable', '项目服务尚未就绪。'); return await service.project.compareStructure(request, signal); } catch (e) { throw failure(e); }
-    }
-    async concept(request: unknown, signal: AbortSignal) {
-      this.owner(); try { if (!service.project) throw new GuideError('unavailable', '项目服务尚未就绪。'); return await service.project.concept(request, signal); } catch (e) { throw failure(e); }
-    }
     async projectView(request: unknown, signal: AbortSignal) {
       this.owner();
       try {
@@ -181,7 +175,7 @@ export async function apply(ctx: any, config: Config) {
     return new RemoteError(`vibeguide/${error instanceof GuideError ? error.code : 'unavailable'}`,
       error instanceof GuideError ? error.message : '暂时无法读取或解释当前状态，主对话开发不受影响。', {});
   }
-  for (const method of ['concept', 'compareStructure', 'supportView', 'saveSupport', 'getSnapshot', 'ask', 'submit', 'projectView', 'overview', 'history', 'annotate', 'handoff', 'reviseRequirement', 'confirmRequirement', 'analyze'] as const) {
+  for (const method of ['supportView', 'saveSupport', 'getSnapshot', 'ask', 'submit', 'projectView', 'overview', 'history', 'annotate', 'handoff', 'reviseRequirement', 'confirmRequirement', 'analyze'] as const) {
     Remote({ resources: { session: ({ request }: any) => request?.sessionId } })(GuideGateway.prototype[method], {
       kind: 'method', name: method, static: false, private: false,
       addInitializer: (fn: (this: any) => void) => initializers.push(fn),

@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { GuideError, object, requestId, text } from './contracts.js';
 import type { GuideSnapshot } from './contracts.js';
 import type { GuideStore } from './store.js';
+import type { ProjectRecord } from './project-types.js';
 import { hash } from './files.js';
 import { defaultPreferences, defaultBudget, validPreferences, validBudget } from './support-types.js';
 import type { Preferences, SupportRecord, SupportView, Usage } from './support-types.js';
@@ -9,6 +10,8 @@ const personalId = '@vibeguide/personal-preferences';
 const empty = (): SupportRecord => ({ usage: [], requests: [] });
 const dayOf = (now: Date) => `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 const turnOf = (snapshot: GuideSnapshot) => `${snapshot.scope.sessionId}:${snapshot.turn ?? 'conversation'}`;
+const versionOf = (personal: ProjectRecord, project: ProjectRecord) =>
+  hash({ personal: personal.support?.preferences ?? defaultPreferences, project: project.support?.preferences, budget: project.support?.budget ?? defaultBudget });
 
 /** Private settings and atomic admission. No automatic calls, timers or main-conversation writes. */
 export class GuideSupport {
@@ -18,7 +21,7 @@ export class GuideSupport {
     const [personal, project] = await Promise.all([this.store.readProject(personalId), this.store.readProject(projectId)]);
     const own = personal.support?.preferences ?? defaultPreferences;
     const preferences = project.support?.preferences ?? own;
-    return { preferences, personal: own, overridden: !!project.support?.preferences, preferenceVersion: hash(preferences), version: hash({ personal: own, project: project.support?.preferences, budget: project.support?.budget ?? defaultBudget }) };
+    return { preferences, personal: own, overridden: !!project.support?.preferences, preferenceVersion: hash(preferences), version: versionOf(personal, project) };
   }
   async view(snapshot: GuideSnapshot): Promise<SupportView> {
     const prefs = await this.preferences(snapshot.scope.projectId), support = (await this.store.readProject(snapshot.scope.projectId)).support ?? empty();
@@ -34,17 +37,13 @@ export class GuideSupport {
     requestId(value.clientRequestId); text(value.version, 100);
     if (!['personal', 'project', 'inherit', 'budget'].includes(String(value.target))) throw new GuideError('invalid_input', '请选择保存范围。');
     if (['personal', 'project'].includes(String(value.target)) ? !validPreferences(value.preferences) || value.budget !== undefined : value.preferences !== undefined || (value.target === 'budget' ? !validBudget(value.budget) : value.budget !== undefined)) throw new GuideError('invalid_input', '讲解设置格式不正确。');
-    const target = value.target === 'personal' ? personalId : snapshot.scope.projectId, digest = hash(value);
-    const before = await this.preferences(snapshot.scope.projectId);
-    const prior = (await this.store.readProject(target)).support?.requests.find(row => row.id === value.clientRequestId);
-    if (prior) { if (prior.digest !== digest) throw new GuideError('request_conflict', '同一保存请求不能更换内容。'); return this.view(snapshot); }
-    if (before.version !== value.version) throw new GuideError('context_changed', '设置已变化，请刷新设置后再保存。');
-    const targetBefore = (await this.store.readProject(target)).support;
-    const settingsHash = (s?: SupportRecord) => hash({ preferences: s?.preferences, budget: s?.budget });
+    const personal = value.target === 'personal', target = personal ? personalId : snapshot.scope.projectId, digest = hash(value);
+    // The version spans two records; check it inside the target's write so a save that lands in between is never overwritten.
+    const other = await this.store.readProject(personal ? snapshot.scope.projectId : personalId);
     await this.store.updateProject(target, record => {
       const s = record.support ??= empty(), existing = s.requests.find(row => row.id === value.clientRequestId);
       if (existing) { if (existing.digest !== digest) throw new GuideError('request_conflict', '同一保存请求不能更换内容。'); return; }
-      if (settingsHash(s) !== settingsHash(targetBefore)) throw new GuideError('context_changed', '设置刚刚变化，请刷新。');
+      if ((personal ? versionOf(record, other) : versionOf(other, record)) !== value.version) throw new GuideError('context_changed', '设置已变化，请刷新设置后再保存。');
       if (value.target === 'inherit') delete s.preferences;
       else if (value.target === 'budget') s.budget = value.budget as SupportView['budget'];
       else s.preferences = value.preferences as Preferences;

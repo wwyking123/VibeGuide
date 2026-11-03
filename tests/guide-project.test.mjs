@@ -91,6 +91,15 @@ test('file changes highlight mapped nodes and retain historical graph without au
   await assert.rejects(f.project.resolve(await f.host.snapshot('other'), ref), { code: 'context_changed' });
 });
 
+test('asking about a part of a project larger than the quick scan is not mislabelled as old', async t => {
+  const f = await fixture(t); await mkdir(join(f.root, 'src'));
+  for (let i = 0; i < 600; i++) await writeFile(join(f.root, 'src', `part-${String(i).padStart(3, '0')}.js`), `export const n = ${i};`);
+  const graph = await f.project.overview(f.req('large'), signal());
+  assert.equal((await f.project.view(f.base, signal())).overview.historical, false);
+  const ref = { kind: 'node', id: `${graph.id}:${graph.nodes[0].id}`, version: graph.id };
+  assert.equal(JSON.parse((await f.project.resolve(await f.host.snapshot('s1'), ref)).text).historical, false);
+});
+
 test('same-project cross-session history is historical and cannot leak across projects', async t => {
   const f = await fixture(t), snapshot = await f.service.getSnapshot({ sessionId: 's1' });
   const answer = await f.service.ask({ sessionId: 's1', clientRequestId: 'ask', basis: snapshot.basis, question: '能跨设备吗？' }, signal());

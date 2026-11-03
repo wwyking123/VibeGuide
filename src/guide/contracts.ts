@@ -43,6 +43,8 @@ export type GuideSnapshot = {
   observations: Observation[];
   choices: Choice[];
   model: { status: 'ready'; route: ModelRoute } | { status: 'not_configured' };
+  /** Harness version newer than the verified ones; the sidebar still loads. */
+  untestedHost?: string;
   limitations: string[];
   progress?: Progress;
   explanations?: Explanation[];

@@ -40,10 +40,8 @@ export type ProjectRecord = {
 export type HistoryItem = Explanation & { contextVersion: string; annotation?: Annotation; fromCurrentSession: boolean };
 export type HistoryPage = { items: HistoryItem[]; nextOffset?: number; incomplete: boolean };
 export type ProjectView = {
-  versions?: { id: string; createdAt: string; summary: string; sampledFiles: number }[];
   projectId: string; fileDigest: string; fileCount: number; complete: boolean;
   overview?: Overview & { historical: boolean; changedNodes: string[]; unmappedChanges: number };
-  trials: Array<TrialCard & { historical: boolean; feedback: TrialFeedback[] }>;
   work?: WorkView;
 };
 export type Focus = { ref: ContextRef; label: string };

@@ -1,5 +1,4 @@
-import { concepts, conceptText } from './glossary.js';
-import { ProjectIndex, compareStructure } from './structure.js';
+import { ProjectIndex } from './structure.js';
 import { GuideSupport } from './support.js';
 import { randomUUID } from 'node:crypto';
 import { dirname } from 'node:path';
@@ -65,14 +64,6 @@ export class ProjectService {
   }
   async excluded(projectId: string) { return (await this.store.readProject(projectId)).annotations.map(row => row.explanationId); }
 
-  async concept(value: unknown, signal: AbortSignal) {
-    object(value, ['sessionId', 'projectId', 'clientRequestId', 'id']); requestId(value.clientRequestId); text(value.id, 100);
-    const { snapshot } = await this.current(value, signal), concept = concepts.find(row => row.id === value.id);
-    if (!concept) throw new GuideError('invalid_input', '这个概念暂未收录。可在下方输入你的问题。');
-    const prefs = await this.support.preferences(snapshot.scope.projectId); signal.throwIfAborted();
-    await this.support.hit(snapshot, `${value.clientRequestId}:${concept.id}`, 'glossary');
-    return { id: concept.id, text: conceptText(concept, prefs.preferences) };
-  }
   async supportView(value: unknown, signal: AbortSignal) {
     object(value, ['sessionId', 'projectId']); const { snapshot } = await this.current(value, signal);
     return this.support.view(snapshot);
@@ -91,20 +82,10 @@ export class ProjectService {
     const overview = value.overviewId ? record.overviews.find(row => row.id === value.overviewId) : record.overviews.at(-1), changes = overview ? changedFiles(overview.basis, structureFiles) : [];
     if (value.overviewId && !overview) throw new GuideError('context_changed', '这个结构版本已不在最近 30 版中，请选择其他版本。');
     const mapped = new Set(overview?.nodes.flatMap(node => node.files) ?? []);
-    return { versions: record.overviews.map(({ id, createdAt, summary, sampledFiles }) => ({ id, createdAt, summary, sampledFiles })), projectId: snapshot.scope.projectId, fileDigest: structureFiles.digest, fileCount: Object.keys(structureFiles.files).length, complete: structureFiles.complete, work: await this.work.view(snapshot, files, record),
+    return { projectId: snapshot.scope.projectId, fileDigest: structureFiles.digest, fileCount: Object.keys(structureFiles.files).length, complete: structureFiles.complete, work: await this.work.view(snapshot, files, record),
       overview: overview && { ...overview, historical: overview.basis.digest !== structureFiles.digest,
         changedNodes: overview.nodes.filter(node => node.files.some(file => changes.includes(file))).map(node => node.id),
-        unmappedChanges: changes.filter(file => !mapped.has(file)).length },
-      trials: record.trials.map(card => ({ ...card, historical: card.basis.digest !== files.digest || !!(card.requirementRef && record.requirementRevisions.some(row => row.id === card.requirementRef!.id && row.version !== card.requirementRef!.version && row.createdAt > card.createdAt)),
-        feedback: record.feedback.filter(row => row.cardId === card.id) })) };
-  }
-
-  async compareStructure(value: unknown, signal: AbortSignal) {
-    object(value, ['sessionId', 'projectId', 'from', 'to']); text(value.from, 200); text(value.to, 200);
-    const { snapshot } = await this.current(value, signal), record = await this.store.readProject(snapshot.scope.projectId);
-    const from = record.overviews.find(row => row.id === value.from), to = record.overviews.find(row => row.id === value.to);
-    if (!from || !to) throw new GuideError('context_changed', '比较版本已不可用，请重新选择。');
-    await this.verify(snapshot, signal); return compareStructure(from, to);
+        unmappedChanges: changes.filter(file => !mapped.has(file)).length } };
   }
 
   private async generate<T>(value: Record<string, unknown>, signal: AbortSignal, operation: (signal: AbortSignal) => Promise<T>): Promise<T> {
@@ -223,7 +204,8 @@ export class ProjectService {
       if (!overview || !node) throw new GuideError('context_changed', '这部分结构已经不可用，请重新选择。');
       const project = await this.host.projectFor(snapshot.scope.sessionId);
       if (project.scope.projectId !== snapshot.scope.projectId || !project.enabled) throw new GuideError('scope_changed', '项目已变化，请刷新。');
-      const files = await this.scan(project.root);
+      // Same bounded index as the overview basis, so large projects are not mislabelled as historical.
+      const files = await this.index.scan(project.root, [dirname(this.store.directory)]);
       return { label: node.title, text: JSON.stringify({ kind: '推测职责，未经功能验证', historical: overview.basis.digest !== files.digest,
         title: node.title, purpose: node.purpose, impact: node.impact, unknowns: overview.unknowns }) };
     }

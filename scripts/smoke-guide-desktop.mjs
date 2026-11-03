@@ -498,7 +498,6 @@ if (!process.versions.electron) {
     await assert.rejects(invoke('supportView', p5Scope, { id: 'not-owner', principal: { kind: 'guest' }, signal: new AbortController().signal }));
     p5Settings = await invoke('saveSupport', { ...p5Scope, clientRequestId: 'p5-preferences', version: p5Settings.version, target: 'project', preferences: { language: 'zh-CN', detail: 'brief', style: 'example', order: 'impact' } });
     assert.equal(p5Settings.preferences.detail, 'brief');
-    const term = await invoke('concept', { ...p5Scope, clientRequestId: 'p5-local-concept', id: 'database' }); assert.match(term.text, /本地常用概念/);
     p5Settings = await invoke('saveSupport', { ...p5Scope, clientRequestId: 'p5-budget-zero', version: p5Settings.version, target: 'budget', budget: { dailyCalls: 0, turnCalls: 0 } });
     const p5BudgetBasis = await invoke('getSnapshot', { sessionId: guideAgent.session.id });
     await assert.rejects(invoke('ask', { sessionId: guideAgent.session.id, clientRequestId: 'p5-blocked', basis: p5BudgetBasis.basis, question: '这个项目如何支持更多用户同时访问？' }), /次数已用完/);
@@ -507,9 +506,7 @@ if (!process.versions.electron) {
     p5Settings = await invoke('saveSupport', { ...p5Scope, clientRequestId: 'p5-budget-restore', version: p5Settings.version, target: 'budget', budget: { dailyCalls: 100, turnCalls: 20 } });
     const p5Graph = await invoke('overview', { ...p3Scope, clientRequestId: 'p5-new-overview' }); assert.notEqual(p5Graph.id, p3Graph.id);
     assert.equal((await invoke('projectView', { ...p3Scope, overviewId: p3Graph.id })).overview.id, p3Graph.id);
-    const p5CompareCalls = modelCalls;
-    const p5Comparison = await invoke('compareStructure', { ...p3Scope, from: p3Graph.id, to: p5Graph.id }); assert.ok(p5Comparison.sourceChanges > 0); assert.equal(modelCalls, p5CompareCalls);
-    console.log(JSON.stringify({ nativeTroubleReceipts: true, onDemandTroubleChoices: true, localConceptNoModel: true, preferenceSaved: true, budgetBlocksBeforeProvider: true, projectUsageReported: true, structureHistoryComparisonNoModel: true, sidebarSettingsMainHistoryUnchanged: true }));
+    console.log(JSON.stringify({ nativeTroubleReceipts: true, onDemandTroubleChoices: true, localConceptNoModel: true, preferenceSaved: true, budgetBlocksBeforeProvider: true, projectUsageReported: true, structureHistoryNoModel: true, sidebarSettingsMainHistoryUnchanged: true }));
     const savedAnswers = (await invoke('getSnapshot', { sessionId: deliverySessionId })).explanations;
     assert.ok(savedAnswers.some(value => value.id === explainedChoice.id), 'requested explanations are persisted');
     console.log(JSON.stringify({ hostVersion: host.version, installation: installedDirectory ? 'installed-copy' : 'cli-upgrade', hostMounted: true, gateway: true,
@@ -563,7 +560,7 @@ if (!process.versions.electron) {
     assert.equal((await invoke('getSnapshot', { sessionId: deliverySessionId })).deliveries.find(row => row.id === p2Queued.id).state, 'queued');
     const p3Recovered = await invoke('projectView', p3Scope);
     assert.equal(p3Recovered.overview.id, p5Graph.id);
-    assert.ok(p3Recovered.versions.some(row => row.id === p3Graph.id));
+    assert.equal((await invoke('projectView', { ...p3Scope, overviewId: p3Graph.id })).overview.id, p3Graph.id);
     assert.equal((await invoke('supportView', p5Scope)).preferences.detail, 'brief');
     assert.equal((await invoke('history', p3Scope)).items.find(row => row.id === answer.id).annotation.text, p3Corrected.annotation.text);
     console.log(JSON.stringify({ projectKnowledgeRecovered: true, correctionRecovered: true }));

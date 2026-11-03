@@ -206,6 +206,7 @@ export function GuidePanel({ sessionId, rpc }: { sessionId: string; rpc: Rpc }) 
     {error && <p role="alert" className="vg-notice">{error}</p>}
     {!snapshot && !error && !readError && <p role="status">正在读取当前会话…</p>}
     {snapshot && <>
+      {tab === 'settings' && snapshot.untestedHost && <p className="vg-sub">Harness {snapshot.untestedHost} 还没和 VibeGuide 一起测试过。如果侧栏出错，请更新 VibeGuide；主对话不受影响。</p>}
       <div hidden={tab !== 'progress'}>
       {snapshot.progress && <Status progress={snapshot.progress}/>}
       {!snapshot.observations.length && <p className="vg-sub">先在主对话说说你想做什么，之后可以在这里问它的影响。</p>}

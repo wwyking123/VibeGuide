@@ -8,7 +8,7 @@ import { GuideSupport } from '../dist/guide/support.js';
 import { defaultPreferences } from '../dist/guide/support-types.js';
 import { GuideService } from '../dist/guide/service.js';
 import { HarnessAdapter } from '../dist/guide/host/adapter.js';
-import { ProjectIndex, compareStructure } from '../dist/guide/structure.js';
+import { ProjectIndex } from '../dist/guide/structure.js';
 import { projectEvidence } from '../dist/guide/project-scan.js';
 import { captureFiles, hash } from '../dist/guide/files.js';
 import { freshProject } from '../dist/guide/project-types.js';
@@ -32,6 +32,15 @@ test('preferences persist, inherit across projects and can be overridden/reset w
   assert.equal((await f.support.view(f.snapshot)).preferences.detail, 'brief'); assert.equal((await f.support.view(other)).preferences.detail, 'standard');
   const restarted = new GuideSupport(f.store); assert.equal((await restarted.view(f.snapshot)).preferences.detail, 'brief');
   await f.save({ target: 'inherit' }); assert.equal((await restarted.view(f.snapshot)).preferences.language, 'en'); assert.equal((await restarted.view(f.snapshot)).calls, 0);
+});
+
+test('concurrent settings saves from the same version never overwrite each other', async t => {
+  const f = await fixture(t), { version } = await f.support.view(f.snapshot);
+  const results = await Promise.allSettled([1, 2, 3].map(n => f.support.save(f.snapshot, { clientRequestId: `race-${n}`, version, target: 'budget', budget: { dailyCalls: n, turnCalls: n } })));
+  assert.equal(results.filter(row => row.status === 'fulfilled').length, 1);
+  assert.ok(results.filter(row => row.status === 'rejected').every(row => row.reason.code === 'context_changed'));
+  const saved = (await f.support.view(f.snapshot)).budget.dailyCalls, winner = results.findIndex(row => row.status === 'fulfilled') + 1;
+  assert.equal(saved, winner);
 });
 
 test('settings reject stale versions and id reuse; limit edits never reset usage', async t => {
@@ -120,13 +129,11 @@ test('trouble explanations remain on demand; absent evidence costs no call; new 
   await f.ask('new', '为什么一直失败？'); assert.equal(f.calls(), 2); assert.equal(f.sends(), 0);
 });
 
-test('overview history selects stored versions and compares locally, including renamed responsibilities', async t => {
+test('overview history selects stored versions', async t => {
   const f = await serviceFixture(t), first = await f.service.project.overview(f.req('first'), signal());
   await writeFile(join(f.root, 'app.py'), 'from .store import save\nsave()\n');
   const second = await f.service.project.overview(f.req('second'), signal()); assert.notEqual(first.id, second.id);
-  const calls = f.calls(); const view = await f.service.project.view({ ...f.snapshot.scope, overviewId: first.id }, signal()); assert.equal(view.overview.id, first.id); assert.equal(view.versions.length, 2);
-  const diff = await f.service.project.compareStructure({ ...f.snapshot.scope, from: first.id, to: second.id }, signal()); assert.equal(diff.sourceChanges, 1); assert.equal(f.calls(), calls);
-  const changed = { ...second, nodes: second.nodes.map(n => ({ ...n, title: '新保存职责' })) }; assert.equal(compareStructure(first, changed).responsibilities[0].descriptionChanged, true);
+  const calls = f.calls(); const view = await f.service.project.view({ ...f.snapshot.scope, overviewId: first.id }, signal()); assert.equal(view.overview.id, first.id); assert.equal(f.calls(), calls);
   await assert.rejects(f.service.project.view({ ...f.snapshot.scope, overviewId: 'foreign-version' }, signal()), { code: 'context_changed' });
 });
 
