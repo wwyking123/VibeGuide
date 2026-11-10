@@ -21,18 +21,21 @@ DeepSeek Harness 的插件，面向不懂技术、用 AI 做产品的人：
 
 ## 安装与更新
 
-需要 Node.js ≥ 22.18 和 `/Applications/DeepSeek Harness.app`。
+需要 Mac 和 `/Applications/DeepSeek Harness.app`，并且至少打开过一次。打开“终端”，粘贴这一行，回车：
 
 ```sh
-git clone https://github.com/wwyking123/VibeGuide.git
-cd VibeGuide
-npm ci
-npm run install:desktop
+curl -fsSL https://raw.githubusercontent.com/wwyking123/VibeGuide/release/install.sh | sh
 ```
 
-完全退出并重新打开 Harness，新建会话，在输入框上方的模式菜单选 **VibeGuide**，从右侧打开 VibeGuide 侧栏。以后更新也是同一条命令。
+下载不动时换这个镜像地址：
 
-安装器把插件放在 `~/.dsh/plugins/` 下，在 `profiles/desktop/cordis.patch.yml` 增加一项声明，原文件备份到 `~/.dsh/.vibeguide-backups/`。不会改动模型设置和其他配置。
+```sh
+curl -fsSL https://cdn.jsdelivr.net/gh/wwyking123/VibeGuide@release/install.sh | sh
+```
+
+看到“安装好了”后，完全退出并重新打开 Harness，新建会话，在输入框上方的模式菜单选 **VibeGuide**，从右侧打开 VibeGuide 侧栏。以后更新也是同一条命令。
+
+不需要 Node 或 git：脚本下载预先构建好的包，用 Harness 自带的运行环境执行安装器。安装器把插件放在 `~/.dsh/plugins/` 下，在 `profiles/desktop/cordis.patch.yml` 增加一项声明，原文件备份到 `~/.dsh/.vibeguide-backups/`。不会改动模型设置和其他配置。
 
 - **停用**：新会话选「标准模式」。
 - **移除**：关闭 Harness，从 `cordis.patch.yml` 删掉 `id: vibeguide-presets` 那一项，再移走它引用的插件目录。
@@ -41,6 +44,8 @@ npm run install:desktop
 
 ## 开发与检查
 
+从源码安装需要 Node.js ≥ 22.18：`git clone` 后运行 `npm ci`，再运行 `npm run install:desktop`。
+
 ```sh
 npm test               # 单元测试
 npm run smoke:guide    # 在隔离的真实 Harness 里走完整流程，用固定回答，不调用模型
@@ -48,7 +53,7 @@ npm run dev:guide      # 启动同样的隔离环境，供浏览器里查看侧�
 npm run eval:sidebar   # 用你登录的 DeepSeek 账号做真实模型评测，会消耗额度
 ```
 
-`node scripts/smoke-guide-desktop.mjs --installed <插件目录>` 可以检查已安装的副本。评测用例在 `evals/sidebar/`，结果写到 `evals/runs/`（不进仓库）。最近一次结果见[侧栏模型评测](docs/reviews/2026-11-03-sidebar-model-eval.md)。
+`node scripts/smoke-guide-desktop.mjs --installed <插件目录>` 可以检查已安装的副本。`sh scripts/release.sh` 跑完测试后，把构建好的包和 `install.sh` 提交到本地 `release` 分支；`git push origin release` 之后，一键安装命令才会拿到新版本。评测用例在 `evals/sidebar/`，结果写到 `evals/runs/`（不进仓库）。最近一次结果见[侧栏模型评测](docs/reviews/2026-11-03-sidebar-model-eval.md)。
 
 ## 项目资料
 
