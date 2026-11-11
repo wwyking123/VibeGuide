@@ -301,4 +301,9 @@ const styles = `
 .vg-composer{flex-shrink:0;padding:10px 16px 14px;border-top:1px solid var(--vg-line)}.vg-input{display:flex;gap:8px;align-items:flex-end}.vg-input button{flex-shrink:0}
 .vg-panel textarea{font:inherit;line-height:1.5;background:transparent;color:inherit;border:1px solid var(--vg-line-strong);border-radius:18px;padding:8px 14px;width:100%;resize:none;min-height:36px;max-height:160px;margin:0;transition:min-height .15s}.vg-panel textarea:focus{outline:none;border-color:var(--vg-accent);min-height:80px;border-radius:12px}.vg-panel textarea.vg-filled{min-height:80px;border-radius:12px}
 .vg-panel .vg-composer .vg-primary{border-radius:16px;padding:6px 14px}.vg-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+@keyframes vg-in{from{opacity:0;transform:translateY(-4px)}}@keyframes vg-fade{from{opacity:0}}@keyframes vg-breathe{from{opacity:.5}}@keyframes vg-pulse{from{box-shadow:0 0 0 0 var(--vg-accent)}70%,to{box-shadow:0 0 0 7px transparent}}
+.vg-panel button{transition:background-color .15s,border-color .15s,color .15s,opacity .15s,transform .1s}.vg-panel .vg-part:active,.vg-panel .vg-primary:active{transform:scale(.985)}.vg-badge,.vg-tag{transition:background-color .2s,color .2s}
+.vg-content section,.vg-intro,.vg-item{animation:vg-fade .18s ease-out}.vg-detail,.vg-suggestion,.vg-notice,.vg-panel details[open]>:not(summary){animation:vg-in .18s ease-out}
+.vg-dot-active{animation:vg-pulse 1.8s ease-out infinite}.vg-panel [role=status]:not(.vg-notice){animation:vg-breathe .9s ease-in-out infinite alternate}
+@media (prefers-reduced-motion:reduce){.vg-panel *{animation:none !important;transition:none !important}}
 `;
