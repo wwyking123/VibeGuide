@@ -1,5 +1,5 @@
 import { SupportPanel } from './support-panel.js';
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { WorkPanels } from './work-panels.js';
 import { AnalysisCard, SendButton } from './analysis-card.js';
 import type { Handoff } from './analysis-card.js';
@@ -63,11 +63,12 @@ export function ProjectPanels({ tab, snapshot, answers, rpc, onFocus, onChanged,
     }
   }
 
-  const overview = view?.overview, node = overview?.nodes.find(item => `${overview.id}:${item.id}` === selected);
+  const overview = view?.overview;
   useEffect(() => { onName(overview?.name); }, [overview?.name]);
   const quiet = !!view && !!snapshot.observations.length && !answers.length && !view.work?.trouble?.failures.length && !snapshot.choices.length;
   const focusNode = (id: string) => {
-    setSelected(`${overview?.id}:${id}`);
+    const key = `${overview?.id}:${id}`;
+    setSelected(current => current === key ? undefined : key);
   };
   const goal = view?.work?.analyses.filter(row => row.kind === 'goal' && !row.historical && row.overviewId === overview?.id).at(-1);
   const goalNodes = new Set(goal?.nodes.map(row => row.id));
@@ -87,13 +88,8 @@ export function ProjectPanels({ tab, snapshot, answers, rpc, onFocus, onChanged,
       {overview && <>
         <p className="vg-summary">{overview.summary}</p>
         {(overview.historical || !overview.nodes.some(row => row.layer)) && <p className="vg-sub">{overview.historical ? '项目文件有变化。' : '这是旧版概览，还没有分层和完成程度。'}<button className="vg-link" disabled={!!busy || !modelReady} onClick={() => void run('overview', {})}>{overview.historical ? '更新概览' : '按新方式整理'}</button></p>}
-        <Layers overview={overview} selected={selected} goalNodes={goalNodes} onSelect={focusNode}/>
+        <Layers overview={overview} selected={selected} goalNodes={goalNodes} onSelect={focusNode} onFocus={onFocus}/>
         {goal && <p className="vg-sub">蓝色是和“{goal.question}”可能相关的部分。</p>}
-        {node && <div className="vg-detail">
-          <h3>{node.title}</h3><p>{node.purpose}</p><p><span className="vg-sub">对使用的影响：</span>{node.impact}</p>
-          {node.maturityReason && <p className="vg-sub">AI 推测：{node.maturityReason}</p>}
-          <button className="vg-link" onClick={() => onFocus({ ref: { kind: 'node', id: `${overview.id}:${node.id}`, version: overview.id }, label: node.title })}>问问这部分</button>
-        </div>}
         {!!overview.unknowns.length && <details className="vg-more"><summary>还不能确认的地方</summary><ul>{overview.unknowns.map((item, index) => <li key={index}>{item}</li>)}</ul></details>}
       </>}
     </section>}
@@ -105,8 +101,8 @@ const LAYERS: Array<[Layer, string, string]> = [['page', '用户看到的', ''],
 const DEV: Layer = 'dev';
 const MATURITY = { works: ['能用', 'ok'], mock: ['模拟', 'warn'] } as const;
 
-/** Parts grouped from what people see down to where data lives, each with an AI-inferred maturity. */
-function Layers({ overview, selected, goalNodes, onSelect }: { overview: NonNullable<ProjectView['overview']>; selected?: string; goalNodes: Set<string | undefined>; onSelect: (id: string) => void }) {
+/** Parts grouped from what people see down to where data lives, each with an AI-inferred maturity. The selected part opens right below itself. */
+function Layers({ overview, selected, goalNodes, onSelect, onFocus }: { overview: NonNullable<ProjectView['overview']>; selected?: string; goalNodes: Set<string | undefined>; onSelect: (id: string) => void; onFocus: (focus: Focus) => void }) {
   const groups = LAYERS.map(([layer, label, link]) => ({ layer, label, link,
     nodes: overview.nodes.filter(node => (node.layer ?? 'other') === layer), missing: (overview.missing ?? []).filter(row => row.layer === layer) }))
     .filter(group => group.nodes.length || group.missing.length);
@@ -114,10 +110,15 @@ function Layers({ overview, selected, goalNodes, onSelect }: { overview: NonNull
   const dev = overview.nodes.filter(node => node.layer === DEV);
   const part = (node: typeof overview.nodes[number]) => {
     const key = `${overview.id}:${node.id}`, changed = overview.changedNodes.includes(node.id), maturity = node.layer !== DEV && node.maturity && MATURITY[node.maturity];
-    return <button key={node.id} className={`vg-part${goalNodes.has(node.id) ? ' vg-part-goal' : ''}`} aria-pressed={key === selected} onClick={() => onSelect(node.id)}>
+    return <Fragment key={node.id}><button className={`vg-part${goalNodes.has(node.id) ? ' vg-part-goal' : ''}`} aria-pressed={key === selected} aria-expanded={key === selected} onClick={() => onSelect(node.id)}>
       <span className="vg-part-main"><span className="vg-part-title">{node.title}{changed && <span className="vg-changed"> · 刚改过</span>}</span><span className="vg-part-sub">{node.purpose}</span></span>
       {maturity && <span className={`vg-tag vg-tag-${maturity[1]}`}>{maturity[1] === 'ok' ? '●' : '◐'} {maturity[0]}</span>}
-    </button>;
+    </button>
+    {key === selected && <div className="vg-detail">
+      <p><span className="vg-sub">对使用的影响：</span>{node.impact}</p>
+      {node.maturityReason && <p className="vg-sub">AI 推测：{node.maturityReason}</p>}
+      <button className="vg-link" onClick={() => onFocus({ ref: { kind: 'node', id: key, version: overview.id }, label: node.title })}>问问这部分</button>
+    </div>}</Fragment>;
   };
   return <div className="vg-layers">
     {groups.map((group, index) => <div key={group.layer}>

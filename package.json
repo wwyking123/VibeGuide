@@ -1,6 +1,6 @@
 {
   "name": "vibeguide",
-  "version": "0.2.0-alpha.8",
+  "version": "0.2.0-alpha.9",
   "description": "Plain-language development conversations and a guide sidebar inside DeepSeek Harness",
   "private": true,
   "type": "module",
