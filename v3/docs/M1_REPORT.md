@@ -161,6 +161,14 @@
 2. 用同样的 `plugin --profile web add link:` 命令指向新快照。
 3. 重启 DSH Desktop。
 
+**更新到 0.3.0-m1.1（14:32）**
+
+- **原因**：用户第一次用需求梳理就报"回答太长被截断了"，见 SPEC 13.1 当天的记录。
+- **改动**：新快照 `plugins/dsh-vibeguide-0.3.0-m1.1/`，`profiles/web/package.json` 的依赖和 `node_modules/dsh-vibeguide` 链接改指向它。`cordis.patch.yml` 没变。
+- **备份**：`.dsh-vibeguide-backups/20261112-143156/profile-web/`。旧快照 `plugins/dsh-vibeguide-0.3.0-m1/` 留在原处，没有删除。
+- **撤销**：DSH Desktop 退出后，把备份里的 `package.json` 拷回 `profiles/web/`，再把 `node_modules/dsh-vibeguide` 链接改回旧快照。
+- **还没做的**：需要完全退出并重开 DSH Desktop，新代码才确定生效。真实模型下还没有跑过，只在隔离宿主里用假模型验证过。
+
 **重开后的核对（12:19）**
 
 - **宿主日志**：没有报错，也没再加载任何旧版副本。有一个会话之前切到过旧版的"VibeGuide 模式"，宿主自动把它改回了"标准模式"（`migrated session … from unavailable preset "vibeguide" to "standard"`）。会话本身没受影响。

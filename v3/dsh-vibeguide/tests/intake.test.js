@@ -99,7 +99,8 @@ test('F1-1/F1-4/F1-11/F1-12 a full interview: rounds, skip, restate, brief, one 
   assert.match(r3.brief.text, /给你的工作方式/)
   assert.match(r3.brief.text, /已确认：目标与使用者：组长和 8 个组员/)
   assert.match(r3.brief.text, /暂定（AI 推荐，可改）：.*核心流程/)
-  for (const c of s.llm.calls) assert.equal(c.maxTokens, 1500, 'ML-2 intake maxTokens')
+  for (const c of s.llm.calls) assert.equal(c.maxTokens, 3000, 'ML-2 intake maxTokens')
+  for (const c of s.llm.calls) assert.equal(c.reasoningEffort, 'off', 'ML-13 thinking is switched off')
 })
 
 test('F1-5 two bad rounds in a row → straight to the restatement, never stuck', async () => {

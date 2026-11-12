@@ -1,0 +1,17 @@
+node_modules/
+dist/
+artifacts/
+*.tgz
+evals/runs/
+.DS_Store
+.env
+.env.*
+!.env.example
+.dsh/
+.kiro/
+*.log
+*.pem
+*.key
+.playwright-cli/
+output/
+.gstack/

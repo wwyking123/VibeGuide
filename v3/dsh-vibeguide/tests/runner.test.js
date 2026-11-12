@@ -1,7 +1,7 @@
 // ML-1 … ML-12, HC-4, HC-7, F2-12 (SPEC §7)
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { ModelRunner, LIMITS, sanitizeFill, extractJson, wrapMaterial } from '../src/host/runner.js'
+import { ModelRunner, LIMITS, REASONING_HEADROOM, sanitizeFill, extractJson, wrapMaterial } from '../src/host/runner.js'
 import { Budget } from '../src/host/budget.js'
 import { Settings } from '../src/host/settings.js'
 import { Store } from '../src/host/store.js'
@@ -32,13 +32,37 @@ test('ML-1 the session model wins, the host default is the fallback', async () =
 })
 
 test('ML-2 / ML-3 explicit maxTokens and timeouts per kind of call', async () => {
-  assert.deepEqual([LIMITS.lens.maxTokens, LIMITS.intake.maxTokens, LIMITS.analysis.maxTokens], [800, 1500, 2500])
+  assert.deepEqual([LIMITS.lens.maxTokens, LIMITS.intake.maxTokens, LIMITS.analysis.maxTokens], [800, 3000, 2500])
   assert.deepEqual([LIMITS.lens.timeoutMs, LIMITS.intake.timeoutMs, LIMITS.analysis.timeoutMs], [30000, 45000, 60000])
-  for (const purpose of ['lens', 'ask', 'explain-error', 'intake']) {
+  for (const purpose of ['lens', 'ask', 'explain-error', 'intake', 'analysis']) {
     const { r, llm } = await runner()
     await r.run({ sessionId: 's', purpose, material: 'x' })
-    assert.ok(Number.isInteger(llm.calls[0].maxTokens) && llm.calls[0].maxTokens <= 2500, purpose)
+    assert.equal(llm.calls[0].maxTokens, LIMITS[purpose].maxTokens, purpose)
   }
+})
+
+test('ML-13 every call switches thinking off; a model that rejects the setting is called again without it', async () => {
+  for (const purpose of ['lens', 'ask', 'explain-error', 'intake', 'analysis']) {
+    const { r, llm } = await runner()
+    await r.run({ sessionId: 's', purpose, material: 'x' })
+    assert.equal(llm.calls[0].reasoningEffort, 'off', purpose)
+  }
+  const a = await runner({ script: [{ failure: { code: 'UNSUPPORTED_REASONING_EFFORT' } }, { text: 'ok' }] })
+  assert.equal((await a.r.run({ sessionId: 's', purpose: 'lens', material: 'x' })).text, 'ok')
+  assert.ok(!('reasoningEffort' in a.llm.calls[1]))
+  assert.equal(a.llm.calls[1].maxTokens, LIMITS.lens.maxTokens + REASONING_HEADROOM, 'room for thinking that cannot be switched off')
+  assert.deepEqual(a.sleeps, [])
+})
+
+test('ML-4 a truncated answer is asked for once more with twice the cap, then reported', async () => {
+  const a = await runner({ script: [{ maxTokens: true }, { text: 'ok' }] })
+  assert.equal((await a.r.run({ sessionId: 's', purpose: 'intake', material: 'x' })).text, 'ok')
+  assert.deepEqual(a.llm.calls.map((c) => c.maxTokens), [LIMITS.intake.maxTokens, LIMITS.intake.maxTokens * 2])
+  assert.equal((await a.budget.today()).calls, 2, 'ML-6 the second attempt is counted')
+  assert.deepEqual(a.sleeps, [])
+  const b = await runner({ script: [{ maxTokens: true }, { maxTokens: true }, { text: 'never' }] })
+  await assert.rejects(b.r.run({ sessionId: 's', purpose: 'intake', material: 'x' }), (e) => e.code === 'model_failed' && /截断/.test(e.message))
+  assert.equal(b.llm.calls.length, 2)
 })
 
 test('HC-4 no tools are ever passed to llm.stream', async () => {

@@ -24,10 +24,14 @@
 | [spikes/m0/](spikes/m0/) | M0 用的探测插件、假模型服务，以及在隔离宿主里复现测试的步骤 |
 | [demo-video/](demo-video/) | 功能示意视频的制作脚本和成片 |
 | [vibe-guide-redesign.md](vibe-guide-redesign.md) | 最早的方向讨论 |
+| [vibe-guide-codex/](vibe-guide-codex/) | **另一套独立的 v3 实现**（0.3.0-alpha.1，TypeScript），由另一个工具从旧项目复制后单独开发，附有它自己的 PRD、Spec、技术设计和实现记录。它和 `dsh-vibeguide/` 是两套不同的代码，互不依赖。按它自己的 `.gitignore`，构建产物 `dist/` 和安装包 `artifacts/` 没有上传，需要自己构建 |
+| [install-vibeguide-dsh-desktop.mjs](install-vibeguide-dsh-desktop.mjs) | 把**旧版** 0.2 装进 DSH Desktop 的适配脚本，仅作留档。运行它会把旧版装回来 |
+
+上传前已经把文档里本机用户名的路径换成了 `~`。
 
 ## 当前状态（2026-11-12）
 
-- **代码**：M1 范围内的功能已实现，`npm test` 的 110 项测试全部通过，在隔离的 DSH 0.2.1-rc.2 里实际点击操作过一遍。
+- **代码**：`dsh-vibeguide` 当前版本 0.3.0-m1.1。M1 范围内的功能已实现，`npm test` 的 112 项测试全部通过；在隔离的 DSH 0.2.1-rc.2 里实际点击操作过一遍。
 - **未达标**：按 [SPEC](docs/SPEC.md) 12.3 还没满足退出条件。[待修清单](docs/M1_FIXLIST.md) 里列了需要先修的问题，以及还没做的真实模型评测和内部试用。
 - **还没做**：M2（白话路线、思路偏移等判断）。
 

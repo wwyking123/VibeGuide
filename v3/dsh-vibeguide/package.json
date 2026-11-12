@@ -1,6 +1,6 @@
 {
   "name": "dsh-vibeguide",
-  "version": "0.3.0-m1",
+  "version": "0.3.0-m1.1",
   "private": true,
   "type": "module",
   "description": "VibeGuide for DeepSeek Harness: plain-language requirement interview, stuck-state alerts and select-to-explain for non-technical builders.",

@@ -8,7 +8,7 @@ DeepSeek Harness（DSH）插件，帮非技术同学用 AI 做东西时：
 
 插件不改主 AI 的行为，也不替你发消息：所有"填入主对话"都只是把文字填进输入框，发不发由你决定。
 
-**当前版本**：0.3.0-m1（M1，内部验证版）。测试过的宿主：DSH Desktop 内置 `@deepseek-ai/dsh` 0.2.1-rc.2。详细情况见 [docs/M1_REPORT.md](../docs/M1_REPORT.md)。
+**当前版本**：0.3.0-m1.1（M1，内部验证版）。测试过的宿主：DSH Desktop 内置 `@deepseek-ai/dsh` 0.2.1-rc.2。详细情况见 [docs/M1_REPORT.md](../docs/M1_REPORT.md)。
 
 ## 开发
 

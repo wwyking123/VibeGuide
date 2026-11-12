@@ -5,18 +5,26 @@
 //   node dev/fake-llm.mjs [port]        default 18080
 //   POST /__main  [step, ...]           queue main-agent steps: {text} | {status, body} | {tool:{name,args}} | {drop:true}
 //   GET  /__log                          every request: who asked (main / vibeguide role) and with what
+//   POST /__thinking {tokens}            when a request leaves thinking on, spend this many tokens on it
+//                                        first, as the real API does: at or over max_tokens the answer never starts
 //   POST /__reset
 import { createServer } from 'node:http'
 
 const port = Number(process.argv[2] ?? 18080)
 let queue = []
 let seen = []
+let thinkingTokens = 0
 
 const ev = (res, type, data) => res.write(`event: ${type}\ndata: ${JSON.stringify({ type, ...data })}\n\n`)
-function reply(res, model, { text, tool, stop }) {
+function reply(res, model, { text, tool, stop, thinking }) {
   res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-cache' })
   ev(res, 'message_start', { message: { id: 'msg_' + Date.now(), type: 'message', role: 'assistant', model, content: [], stop_reason: null, usage: { input_tokens: 120, output_tokens: 1 } } })
   let index = 0
+  if (thinking) {
+    ev(res, 'content_block_start', { index, content_block: { type: 'thinking', thinking: '' } })
+    ev(res, 'content_block_delta', { index, delta: { type: 'thinking_delta', thinking: '让我想想用户要什么……' } })
+    ev(res, 'content_block_stop', { index }); index++
+  }
   if (text) {
     ev(res, 'content_block_start', { index, content_block: { type: 'text', text: '' } })
     for (const piece of text.match(/[\s\S]{1,8}/gu) ?? []) ev(res, 'content_block_delta', { index, delta: { type: 'text_delta', text: piece } })
@@ -65,7 +73,8 @@ createServer(async (req, res) => {
   const raw = Buffer.concat(chunks).toString('utf8')
   const url = new URL(req.url, 'http://x')
   if (url.pathname === '/__main') { queue.push(...JSON.parse(raw)); res.end(JSON.stringify({ queued: queue.length })); return }
-  if (url.pathname === '/__reset') { queue = []; seen = []; res.end('{}'); return }
+  if (url.pathname === '/__reset') { queue = []; seen = []; thinkingTokens = 0; res.end('{}'); return }
+  if (url.pathname === '/__thinking') { thinkingTokens = Number(JSON.parse(raw).tokens) || 0; res.end(JSON.stringify({ thinkingTokens })); return }
   if (url.pathname === '/__log') { res.setHeader('content-type', 'application/json'); res.end(JSON.stringify(seen, null, 1)); return }
   if (!url.pathname.endsWith('/messages')) { res.writeHead(404); res.end('{}'); return }
   let body = {}
@@ -74,10 +83,14 @@ createServer(async (req, res) => {
   const user = JSON.stringify(body.messages?.at(-1)?.content ?? '')
   const vg = vibeguide(system, user)
   const step = vg ?? queue.shift() ?? { text: '好的，我已经处理完了。' }
-  seen.push({ t: Date.now(), who: vg ? `vibeguide:${vg.role}` : 'main', maxTokens: body.max_tokens, tools: (body.tools ?? []).length, step: vg ? undefined : step })
+  const thinking = body.thinking?.type === 'enabled' && thinkingTokens > 0
+  const cutOff = thinking && thinkingTokens >= (body.max_tokens ?? Infinity)
+  seen.push({ t: Date.now(), who: vg ? `vibeguide:${vg.role}` : 'main', maxTokens: body.max_tokens, thinking: body.thinking?.type, effort: body.output_config?.effort, cutOff,
+    tools: (body.tools ?? []).length, step: vg ? undefined : step })
   console.log(vg ? `vibeguide:${vg.role}` : 'main', JSON.stringify(step).slice(0, 100))
   const model = body.model ?? 'deepseek-chat'
   if (step.status) { res.writeHead(step.status, { 'content-type': 'application/json' }); res.end(JSON.stringify(step.body ?? { error: { message: `fake ${step.status}` } })); return }
   if (step.drop) { res.socket?.destroy(); return }
-  reply(res, model, { text: step.json ? JSON.stringify(step.json) : step.text, tool: step.tool })
+  if (cutOff) { reply(res, model, { thinking, stop: 'max_tokens' }); return }
+  reply(res, model, { text: step.json ? JSON.stringify(step.json) : step.text, tool: step.tool, thinking })
 }).listen(port, '127.0.0.1', () => console.log('fake llm on', port))

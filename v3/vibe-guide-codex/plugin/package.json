@@ -1,0 +1,54 @@
+{
+  "name": "vibeguide",
+  "version": "0.3.0-alpha.1",
+  "description": "Plain-language development conversations and a guide sidebar inside DeepSeek Harness",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "os": [
+    "darwin",
+    "linux"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./guide": {
+      "types": "./dist/guide/plugin.d.ts",
+      "import": "./dist/guide/plugin.js"
+    },
+    "./client": "./dist/client.js"
+  },
+  "files": [
+    "dist",
+    "src",
+    "prompts",
+    "scripts",
+    "evals",
+    "docs",
+    "tests",
+    "tsconfig.json",
+    "README.md",
+    "Install-VibeGuide.command",
+    "install.sh"
+  ],
+  "scripts": {
+    "build": "tsc && node scripts/build-client.mjs",
+    "test": "npm run build && node --test tests/*.test.mjs",
+    "smoke:guide": "npm run build && node scripts/smoke-guide-desktop.mjs",
+    "dev:guide": "npm run build && node scripts/smoke-guide-desktop.mjs --serve",
+    "install:desktop": "npm run build && node scripts/install-desktop.mjs --home \"$HOME/.dsh\" --upgrade",
+    "prepack": "npm run build"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "4.0.5",
+    "@deepseek-ai/dsh-system-prompt": "0.2.1-rc.2",
+    "@types/node": "24.19.2",
+    "@types/react": "18.3.1",
+    "esbuild": "0.28.2",
+    "typescript": "5.9.3"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "installed": true,
+  "version": "0.3.0-alpha.1",
+  "edition": "sidebar",
+  "desktopVersion": "0.2.1-rc.2",
+  "preset": "vibeguide",
+  "packageDirectory": "~/Library/Application Support/dsh-desktop/harness/plugins/vibeguide-desktop-1e28df56-7303-48af-8db5-9dd37d8a40ea",
+  "profile": "~/Library/Application Support/dsh-desktop/harness/profiles/web",
+  "backup": "~/Library/Application Support/dsh-desktop/harness/.vibeguide-backups/desktop-cordis-1794455723452.patch.yml",
+  "storageRoot": "~/Library/Application Support/dsh-desktop/harness/vibeguide-p0-state",
+  "upgraded": true,
+  "retiredP0": false,
+  "restartRequired": true
+}

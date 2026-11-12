@@ -5,14 +5,20 @@ import { redact } from './redact.js'
 export const RETRYABLE = new Set(['RATE_LIMIT', 'TRANSPORT', 'SERVER', 'EMPTY_RESPONSE'])
 export const RETRY_DELAYS = [1000, 3000]
 
-// ML-2 / ML-3: explicit output caps and timeouts per kind of call.
+// ML-2 / ML-3: explicit output caps and timeouts per kind of call. The caps size the answer alone,
+// because thinking is switched off (ML-13).
 export const LIMITS = {
   lens: { maxTokens: 800, timeoutMs: 30_000 },
   ask: { maxTokens: 800, timeoutMs: 30_000 },
   'explain-error': { maxTokens: 800, timeoutMs: 30_000 },
-  intake: { maxTokens: 1500, timeoutMs: 45_000 },
+  intake: { maxTokens: 3000, timeoutMs: 45_000 },
   analysis: { maxTokens: 2500, timeoutMs: 60_000 },
 }
+// ML-13: every call switches thinking off. The host counts thinking against maxTokens and defaults
+// to effort "high", which used up a whole 1500-token cap before the answer started. A model that
+// rejects the setting is called once more without it, with this much extra room for its thinking.
+export const REASONING_EFFORT = 'off'
+export const REASONING_HEADROOM = 4000
 export const AUTO_PURPOSES = new Set(['analysis', 'explain-error'])
 
 const FAILURE_MESSAGES = {
@@ -26,7 +32,7 @@ const FAILURE_MESSAGES = {
   TRANSPORT: '连不上模型服务，可能是网络断了。',
   SERVER: '模型服务暂时出故障了，稍后再试。',
   TIMEOUT: '模型服务响应超时了，请稍后再试。',
-  OUTPUT_TRUNCATED: '回答太长被截断了，请缩小问题范围再试。',
+  OUTPUT_TRUNCATED: '回答写到一半被截断了，请再试一次。',
   EMPTY_RESPONSE: '模型这次没有返回内容，请重试。',
 }
 
@@ -110,7 +116,9 @@ export class ModelRunner {
     const llm = this.getLlm()
     if (!llm || typeof llm.stream !== 'function') throw new GuideError('model_unavailable', '模型服务不可用，规则类提醒照常工作。', 503)
     const route = await this.route(sessionId)
-    const { maxTokens, timeoutMs } = LIMITS[purpose] ?? LIMITS.lens
+    let { maxTokens, timeoutMs } = LIMITS[purpose] ?? LIMITS.lens
+    let reasoningEffort = REASONING_EFFORT
+    let grown = false
     const auto = AUTO_PURPOSES.has(purpose)
     const user = `${wrapMaterial(redact(material ?? ''))}${instruction ? `\n\n${redact(instruction)}` : ''}`
     let note = ''
@@ -119,10 +127,13 @@ export class ModelRunner {
       if (signal?.aborted) throw abortError(signal)
       await this.budget.reserve({ sessionId, turn, purpose, auto })
       this.calls++
-      const outcome = await this.#once(llm, route, { system, user: user + note, maxTokens, timeoutMs, signal, urgent })
+      const outcome = await this.#once(llm, route, { system, user: user + note, maxTokens, reasoningEffort, timeoutMs, signal, urgent })
       if (outcome.usage) await this.budget.recordTokens(outcome.usage).catch(() => {})
       if (outcome.failure) {
         const code = outcome.failure.code
+        if (code === 'UNSUPPORTED_REASONING_EFFORT' && reasoningEffort) { reasoningEffort = undefined; maxTokens += REASONING_HEADROOM; continue }
+        // ML-4: asking again under the same cap would be cut off again, so the one retry doubles it.
+        if (code === 'OUTPUT_TRUNCATED' && !grown) { grown = true; maxTokens *= 2; continue }
         if (RETRYABLE.has(code) && attempt < RETRY_DELAYS.length) { await this.sleep(RETRY_DELAYS[attempt]); continue }
         throw new GuideError('model_failed', FAILURE_MESSAGES[code] ?? 'VibeGuide 这次没能生成回答，主对话不受影响。', 502, { modelCode: code })
       }
@@ -136,7 +147,7 @@ export class ModelRunner {
     }
   }
 
-  async #once(llm, route, { system, user, maxTokens, timeoutMs, signal, urgent }) {
+  async #once(llm, route, { system, user, maxTokens, reasoningEffort, timeoutMs, signal, urgent }) {
     await this.gate.take(urgent)
     const controller = new AbortController()
     let timedOut = false
@@ -146,7 +157,7 @@ export class ModelRunner {
     let text = '', usage, finish
     try {
       // HC-4: no `tools` key, ever.
-      for await (const chunk of llm.stream({ ...route, system, maxTokens,
+      for await (const chunk of llm.stream({ ...route, system, maxTokens, ...(reasoningEffort ? { reasoningEffort } : {}),
         messages: [{ role: 'user', content: [{ type: 'text', text: user }] }], signal: controller.signal })) {
         if (chunk?.type === 'text-delta' && typeof chunk.text === 'string') text += chunk.text
         else if (chunk?.type === 'usage') usage = chunk.usage

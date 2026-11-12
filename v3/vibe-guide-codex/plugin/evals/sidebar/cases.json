@@ -1,0 +1,84 @@
+{
+  "version": 1,
+  "about": "侧栏三处依赖模型的输出：讲解是否标出可发送的改法、代写要求是否忠于原意、概览的分层与完成程度。每条用例都写明已知的正确答案，用规则核对，原始输出另存供人工复查。",
+  "context": {
+    "projectName": "好消息",
+    "observations": [
+      { "id": "o1", "kind": "user", "text": "我想做一个叫好消息的手机 app，人们可以分享自己的好消息，看别人的好消息，还能和别人互相交换。", "source": { "sessionId": "eval", "seq": 1 } },
+      { "id": "o2", "kind": "assistant", "text": "第一版已完成：可以发布、浏览广场、点赞和交换。数据先保存在本机浏览器里，交换对象目前是写死的三位示例用户，还不能真正和别人交换。", "source": { "sessionId": "eval", "seq": 2 } }
+    ]
+  },
+  "explain": [
+    { "id": "e1", "question": "首页标题太长了，手机上显示成两行，怎么改比较好？", "suggestion": "yes", "mustInclude": ["标题"] },
+    { "id": "e2", "question": "保存在本机是什么意思？", "suggestion": "no" },
+    { "id": "e3", "question": "现在能和别人真正交换好消息吗？要怎么才能做到？", "suggestion": "yes", "mustInclude": ["交换"] },
+    { "id": "e4", "question": "换一部手机还能看到我发过的好消息吗？", "suggestion": "either" },
+    { "id": "e5", "question": "点赞数会不会让大家互相比较？", "suggestion": "either" },
+    { "id": "e6", "question": "API 是什么？", "suggestion": "no" },
+    { "id": "e7", "question": "我不想让别人看到我是谁，现在是匿名的吗？如果不是要怎么改？", "suggestion": "yes", "mustInclude": ["匿名"] },
+    { "id": "e8", "question": "为什么 AI 说交换对象是写死的？", "suggestion": "either" }
+  ],
+  "compose": [
+    { "id": "c1", "source": { "suggestion": "请把首页标题缩短为一行，保留“好消息”三个字。", "question": "首页标题太长了怎么改？", "explanation": "手机宽度下标题换行，缩短后更醒目。" },
+      "mustInclude": ["标题", "好消息"], "mustNotInclude": ["登录", "数据库"] },
+    { "id": "c2", "source": { "suggestion": "请让信息流只显示 24 小时内的好消息，交换记录保留，不要删除用户自己的历史。", "question": "旧内容一直堆着怎么办？", "explanation": "24 小时消失更轻松，但个人记录要保留。" },
+      "mustInclude": ["24", "交换记录", "不"], "mustNotInclude": ["删除交换记录"] },
+    { "id": "c3", "source": { "suggestion": "请把昵称改为发布时随机生成，不显示真实姓名或头像。", "question": "怎么做到匿名？", "explanation": "随机昵称能保护身份。",
+      "constraints": ["不要公开用户的真实信息。"] },
+      "mustInclude": ["随机", "不"], "mustNotInclude": ["手机号登录", "实名"] },
+    { "id": "c4", "source": { "suggestion": "请先找出保存失败的检查条件，再修复，保留已有的好消息数据。", "reason": "能确认原因再改", "situation": "保存检查连续失败 2 次" },
+      "mustInclude": ["保存", "保留"], "mustNotInclude": ["清空", "重置"] },
+    { "id": "c5", "source": { "suggestion": "请只允许最多 3 个分类，超过时提示用户。", "question": "分类太多怎么办？", "explanation": "分类少更好选。" },
+      "mustInclude": ["3"], "mustNotInclude": ["5 个", "五个"] },
+    { "id": "c6", "source": { "suggestion": "请把交换改为双方都点同意后才发生，任何一方拒绝就取消。", "question": "交换要不要对方同意？", "explanation": "双方同意更安全。",
+      "constraints": ["整个项目保持匿名，不公开用户回答。"] },
+      "mustInclude": ["同意", "拒绝"], "mustNotInclude": ["自动交换"] }
+  ],
+  "overview": [
+    { "id": "p1",
+      "requirements": ["好消息要能换手机继续看。", "交换要和真实的人发生，不是示例用户。"],
+      "files": [
+        { "file": "index.html", "excerpt": "<!doctype html><title>好消息</title><nav><a href=\"#square\">广场</a><a href=\"#publish\">发布</a><a href=\"#exchange\">交换</a></nav><main id=\"app\"></main><script src=\"app.js\"></script><script src=\"exchange.js\"></script>" },
+        { "file": "app.js", "excerpt": "const KEY='good-news';\nfunction load(){return JSON.parse(localStorage.getItem(KEY)||'[]')}\nfunction publish(text,category){const list=load();list.unshift({id:Date.now(),text,category,likes:0,at:new Date().toISOString()});localStorage.setItem(KEY,JSON.stringify(list));render()}\nfunction like(id){const list=load();list.find(x=>x.id===id).likes++;localStorage.setItem(KEY,JSON.stringify(list));render()}\nfunction render(){const app=document.getElementById('app');app.innerHTML=load().map(x=>`<article class=card><p>${x.text}</p><button onclick=like(${x.id})>赞 ${x.likes}</button></article>`).join('')}" },
+        { "file": "exchange.js", "excerpt": "// 交换：目前随机从示例用户里挑一位\nconst DEMO_PEOPLE=[{name:'小橘',news:'今天面试通过了'},{name:'阿岚',news:'猫咪终于肯吃药了'},{name:'木木',news:'跑完了第一个 5 公里'}];\nfunction exchange(myNews){const other=DEMO_PEOPLE[Math.floor(Math.random()*3)];return {mine:myNews,theirs:other}}" },
+        { "file": "styles.css", "excerpt": ":root{--cream:#fff8ee;--card:#ffffff}body{background:var(--cream);font-family:system-ui}.card{border-radius:16px}" },
+        { "file": "README.md", "excerpt": "# 好消息原型\n打开 index.html 即可使用。数据只保存在本机浏览器。交换对象是示例数据。\n下一步：账号与云端同步。" },
+        { "file": "tools/verify.mjs", "excerpt": "import { chromium } from 'playwright';\n// 自动检查：发布一条好消息后刷新，确认还在列表里\n" },
+        { "file": "design/themes.html", "excerpt": "<!-- 三套配色方案对比稿，仅供挑选风格 --><section class=\"theme-a\">奶油</section><section class=\"theme-b\">薄荷</section>" }
+      ],
+      "expect": {
+        "byFile": {
+          "index.html": { "layer": ["page"], "maturity": ["works"] },
+          "app.js": { "layer": ["page", "logic", "data"], "maturity": ["works"] },
+          "exchange.js": { "layer": ["logic"], "maturity": ["mock"] },
+          "styles.css": { "layer": ["page"], "maturity": ["works"] },
+          "README.md": { "layer": ["dev"] },
+          "tools/verify.mjs": { "layer": ["dev"] },
+          "design/themes.html": { "layer": ["dev"] }
+        },
+        "missingAny": ["账号", "登录", "云", "同步"],
+        "missingMax": 4
+      } },
+    { "id": "p2", "project": "4",
+      "requirements": ["老师可以看到每个学生的打卡记录。"],
+      "files": [
+        { "file": "src/pages/CheckIn.tsx", "excerpt": "export function CheckIn(){ const [done,setDone]=useState(false); return <button onClick={()=>{ api.post('/checkins',{day:today()}); setDone(true) }}>今天打卡</button> }" },
+        { "file": "src/api.ts", "excerpt": "export const api = axios.create({ baseURL: import.meta.env.VITE_API_URL });" },
+        { "file": "server/routes/checkins.js", "excerpt": "router.post('/checkins', auth, async (req,res)=>{ await db.checkins.insert({ user:req.user.id, day:req.body.day }); res.json({ok:true}) })\nrouter.get('/checkins/mine', auth, async (req,res)=>res.json(await db.checkins.find({ user:req.user.id })))" },
+        { "file": "server/db.js", "excerpt": "import { Pool } from 'pg'; export const pool = new Pool({ connectionString: process.env.DATABASE_URL }); export const db = { checkins: table(pool,'checkins') };" },
+        { "file": "server/auth.js", "excerpt": "// 登录：使用 Supabase Auth 校验 token\nexport async function auth(req,res,next){ const { data } = await supabase.auth.getUser(req.headers.authorization); if(!data.user) return res.status(401).end(); req.user=data.user; next() }" },
+        { "file": "src/pages/Teacher.tsx", "excerpt": "export function Teacher(){ return <div>老师视图（待开发）</div> }" }
+      ],
+      "expect": {
+        "byFile": {
+          "src/pages/CheckIn.tsx": { "layer": ["page"], "maturity": ["works"] },
+          "server/routes/checkins.js": { "layer": ["logic"], "maturity": ["works"] },
+          "server/db.js": { "layer": ["data"], "maturity": ["works"] },
+          "server/auth.js": { "layer": ["external", "logic"], "maturity": ["works"] },
+          "src/pages/Teacher.tsx": { "layer": ["page"], "maturity": ["mock"] }
+        },
+        "missingAny": ["老师", "学生", "全部", "所有"], "nameNot": ["好消息", "4"],
+        "missingMax": 4
+      } }
+  ]
+}

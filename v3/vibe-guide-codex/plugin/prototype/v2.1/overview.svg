@@ -1,0 +1,135 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1180" viewBox="0 0 1600 1180" role="img" aria-labelledby="title desc"><title id="title">VibeGuide 前端与交互总览</title><desc id="desc">DeepSeek Harness 中的主对话继续开发，右侧 VibeGuide 解释变化。用户提问只得到解释，明确修改直接转交并显示回执。静态设计示意，未连接真实 AI。</desc><defs><linearGradient id="bg" x2="1" y2="1"><stop stop-color="#f3f6f1"/><stop offset="1" stop-color="#ebf0ed"/></linearGradient><linearGradient id="rail" x2="0" y2="1"><stop stop-color="#e0e9ed"/><stop offset="1" stop-color="#eff2ee"/></linearGradient><filter id="shadow" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="12" stdDeviation="20" flood-color="#284137" flood-opacity=".08"/></filter></defs><g font-family="Inter, -apple-system, PingFang SC, Microsoft YaHei, sans-serif">
+<rect x="0" y="0" width="1600" height="1180" rx="0" fill="url(#bg)" stroke="none"/>
+<text x="66" y="47" font-size="19" fill="#306347" font-weight="650">VibeGuide</text>
+<text x="177" y="47" font-size="11" fill="#91a28f" font-weight="400">/  FRONTEND &amp; INTERACTION  /  2.1</text>
+<text x="65" y="100" font-size="35" fill="#2d4937" font-weight="600">开发照常进行，理解就在旁边。</text>
+<text x="67" y="133" font-size="15" fill="#7d907b" font-weight="400">一个模式 · 三个侧栏入口 · 问明白，再表达你真正想要的改变</text>
+<rect x="1307" y="77" width="226" height="32" rx="16" fill="#e7ede3" stroke="none"/>
+<text x="1328" y="98" font-size="12" fill="#7b9171" font-weight="400">静态示意 · 未连接真实 AI</text>
+<g filter="url(#shadow)">
+<rect x="64" y="165" width="1472" height="755" rx="14" fill="#fff" stroke="#dce5da"/>
+</g>
+<rect x="65" y="166" width="192" height="753" rx="12" fill="url(#rail)" stroke="none"/>
+<rect x="247" y="166" width="10" height="753" rx="0" fill="url(#rail)" stroke="none"/>
+<path d="M257 166L257 919" stroke="#dbe3df" fill="none"/>
+<rect x="1094" y="166" width="441" height="753" rx="0" fill="#fbfcf8" stroke="none"/>
+<path d="M1094 166L1094 919" stroke="#dbe5d6" fill="none"/>
+<circle cx="85" cy="190" r="5" fill="#ec8177"/>
+<circle cx="103" cy="190" r="5" fill="#e1c16a"/>
+<circle cx="121" cy="190" r="5" fill="#88ba89"/>
+<text x="87" y="237" font-size="26" fill="#3a5157" font-weight="700">deepseek</text>
+<text x="89" y="259" font-size="10" fill="#8b9da0" font-weight="400">H A R N E S S</text>
+<rect x="79" y="288" width="162" height="39" rx="8" fill="#ffffffaa" stroke="#d1dedc"/>
+<text x="99" y="313" font-size="13" fill="#58716e" font-weight="400">＋   新会话</text>
+<text x="97" y="359" font-size="13" fill="#829591" font-weight="400">◇    插件</text>
+<text x="98" y="401" font-size="13" fill="#829591" font-weight="400">◷    自动化任务</text>
+<text x="96" y="460" font-size="10" fill="#99a9a3" font-weight="400">工 作 区</text>
+<rect x="80" y="477" width="160" height="39" rx="7" fill="#dce6df" stroke="none"/>
+<text x="98" y="502" font-size="13" fill="#627d68" font-weight="550">▢   21 天思考</text>
+<text x="113" y="541" font-size="11" fill="#8a9e8c" font-weight="400">从一个问题开始</text>
+<path d="M84 851L237 851" stroke="#d3ded5" fill="none"/>
+<circle cx="104" cy="882" r="14" fill="#d3e1d2"/>
+<text x="96" y="886" font-size="11" fill="#6a8667" font-weight="400">W</text>
+<text x="128" y="880" font-size="11" fill="#7e937c" font-weight="400">我的工作空间</text>
+<text x="128" y="896" font-size="9" fill="#a0ae99" font-weight="400">本地演示</text>
+<text x="288" y="194" font-size="10" fill="#9cab9f" font-weight="400">工作区 / 21 天思考</text>
+<text x="288" y="218" font-size="15" fill="#415b47" font-weight="550">从一个问题开始，养成思考的习惯</text>
+<circle cx="991" cy="207" r="3" fill="#729d67"/>
+<text x="1001" y="212" font-size="11" fill="#729267" font-weight="400">VibeGuide</text>
+<path d="M257 235L1094 235" stroke="#edf0eb" fill="none"/>
+<rect x="432" y="264" width="618" height="68" rx="11" fill="#f1f5f0" stroke="none"/>
+<text x="450" y="291" font-size="13" fill="#6b7d68" font-weight="400">我想做一个 21 天思考的小游戏。先不用登录，</text>
+<text x="450" y="313" font-size="13" fill="#6b7d68" font-weight="400">每天回答一个问题，能保存回答并看到自己的进度。</text>
+<rect x="297" y="360" width="28" height="28" rx="8" fill="#edf2fa" stroke="none"/>
+<text x="305" y="380" font-size="17" fill="#7891c4" font-weight="400">✦</text>
+<text x="336" y="379" font-size="13" fill="#51684e" font-weight="600">DeepSeek</text>
+<text x="297" y="421" font-size="14" fill="#6d7d67" font-weight="400">好，先做一个可以直接开始体验的版本。</text>
+<text x="297" y="448" font-size="14" fill="#6d7d67" font-weight="400">回答保存在当前浏览器里，换手机暂时看不到这些记录。</text>
+<rect x="297" y="476" width="753" height="172" rx="10" fill="#fff" stroke="#e1e8dd"/>
+<rect x="298" y="477" width="751" height="39" rx="10" fill="#f7faf5" stroke="none"/>
+<text x="314" y="502" font-size="12" fill="#83967a" font-weight="400">这一轮正在做的事</text>
+<text x="1004" y="502" font-size="10" fill="#98a58e" font-weight="400">2 / 3</text>
+<text x="318" y="545" font-size="13" fill="#8fa17d" font-weight="400">✓</text>
+<text x="345" y="545" font-size="12" fill="#8c9c82" font-weight="400">展示每日问题和回答区域</text>
+<circle cx="322" cy="576" r="4" fill="#749660"/>
+<text x="345" y="581" font-size="12" fill="#5b814b" font-weight="550">保存回答，关联打卡进度</text>
+<circle cx="322" cy="612" r="5" fill="#edf2e7"/>
+<text x="345" y="617" font-size="12" fill="#a2af98" font-weight="400">检查刷新之后还能继续</text>
+<rect x="299" y="645" width="750" height="3" rx="0" fill="#edf2e7" stroke="none"/>
+<rect x="299" y="645" width="500" height="3" rx="0" fill="#96b17f" stroke="none"/>
+<circle cx="304" cy="675" r="3" fill="#87a475"/>
+<text x="316" y="679" font-size="11" fill="#91a082" font-weight="400">开发继续进行 · 模拟进展</text>
+<rect x="297" y="700" width="753" height="105" rx="11" fill="#f5f5eb" stroke="#e4e8d8"/>
+<text x="318" y="725" font-size="9" fill="#a3ad8b" font-weight="400">A QUESTION A DAY</text>
+<text x="317" y="758" font-size="25" fill="#71805d" font-weight="400">把今天，想明白一点</text>
+<text x="319" y="783" font-size="10" fill="#a0aa88" font-weight="400">查看页面效果 · 21 天思考 ↗</text>
+<path d="M970 788v-50" stroke="#9bb184" stroke-width="2"/><path d="M970 765c-30-1-28-26-28-26s31 1 28 26" fill="#c7d6b2"/><path d="M970 741c-2-26 27-29 27-29s1 26-27 29" fill="#a3bd8d"/>
+<rect x="284" y="833" width="785" height="64" rx="11" fill="#fff" stroke="#dce5d7"/>
+<text x="301" y="858" font-size="12" fill="#a3b19b" font-weight="400">和主 AI 继续开发，或提出你的修改…</text>
+<text x="301" y="881" font-size="9" fill="#a2af97" font-weight="400">＋   工作区内修改</text>
+<text x="929" y="882" font-size="9" fill="#a2af97" font-weight="400">DeepSeek · 演示</text>
+<rect x="1034" y="863" width="23" height="23" rx="6" fill="#b5c6e8" stroke="none"/>
+<text x="1041" y="880" font-size="16" fill="#fff" font-weight="400">↑</text>
+<rect x="1116" y="184" width="32" height="32" rx="10" fill="#e8f0df" stroke="none"/>
+<path d="M1132 207v-12m0 8c-10 0-9-10-9-10s10 0 9 10m0-6c0-8 8-8 8-8s1 9-8 8" fill="none" stroke="#739760" stroke-width="1.5"/>
+<text x="1159" y="199" font-size="17" fill="#466c39" font-weight="650">VibeGuide</text>
+<text x="1159" y="216" font-size="10" fill="#99aa8a" font-weight="400">和你一起，看懂项目</text>
+<circle cx="1456" cy="200" r="3" fill="#8ba776"/>
+<text x="1464" y="204" font-size="10" fill="#9caf8c" font-weight="400">开发中</text>
+<text x="1118" y="257" font-size="12" fill="#5b8249" font-weight="600">当前进展</text>
+<text x="1236" y="257" font-size="12" fill="#99aa8b" font-weight="400">项目结构</text>
+<text x="1356" y="257" font-size="12" fill="#99aa8b" font-weight="400">了解过的</text>
+<path d="M1094 276L1535 276" stroke="#e6ecde" fill="none"/>
+<rect x="1117" y="274" width="66" height="2" rx="0" fill="#719556" stroke="none"/>
+<text x="1119" y="311" font-size="10" fill="#a0ae8d" font-weight="550">跟着真实变化，理解影响</text>
+<text x="1119" y="349" font-size="23" fill="#49683b" font-weight="600">回答和进度，现在连起来了</text>
+<text x="1119" y="380" font-size="12" fill="#92a07f" font-weight="400">主 AI 在继续开发，</text>
+<text x="1119" y="403" font-size="12" fill="#92a07f" font-weight="400">你可以在这里随时问明白。</text>
+<rect x="1119" y="428" width="391" height="174" rx="10" fill="#fff" stroke="#dce7d1"/>
+<text x="1136" y="455" font-size="10" fill="#9aaf81" font-weight="400">对使用者来说</text>
+<text x="1136" y="485" font-size="17" fill="#64834c" font-weight="550">回答保存在当前浏览器</text>
+<text x="1136" y="514" font-size="12" fill="#93a47f" font-weight="400">不用注册，就能开始回答；同一浏览器可以继续。</text>
+<text x="1136" y="538" font-size="12" fill="#93a47f" font-weight="400">但换一台手机，暂时看不到这些记录。</text>
+<path d="M1136 554L1490 554" stroke="#edf1e5" fill="none"/>
+<text x="1136" y="581" font-size="10" fill="#a2b08a" font-weight="400">“只给自己看”仍保留，不会自动公开分享。</text>
+<text x="1123" y="632" font-size="11" fill="#7e9c66" font-weight="400">✓   回答与打卡进度</text>
+<text x="1360" y="632" font-size="10" fill="#a5b48d" font-weight="400">演示中已检查</text>
+<text x="1123" y="658" font-size="11" fill="#a1b08c" font-weight="400">◷   刷新后保留记录</text>
+<text x="1360" y="658" font-size="10" fill="#aabb91" font-weight="400">尚未验证</text>
+<text x="1122" y="697" font-size="11" fill="#91aa78" font-weight="400">↳  在项目结构中看看</text>
+<rect x="1119" y="717" width="391" height="35" rx="7" fill="#f5f8ef" stroke="#e1e9d7"/>
+<text x="1133" y="740" font-size="11" fill="#91a27d" font-weight="400">换手机，还能看到这些记录吗？</text>
+<text x="1485" y="740" font-size="12" fill="#a2b48a" font-weight="400">→</text>
+<rect x="1119" y="760" width="391" height="35" rx="7" fill="#f5f8ef" stroke="#e1e9d7"/>
+<text x="1133" y="783" font-size="11" fill="#91a27d" font-weight="400">为什么不用云端保存？</text>
+<text x="1485" y="783" font-size="12" fill="#a2b48a" font-weight="400">→</text>
+<path d="M1094 818L1535 818" stroke="#e3ebd8" fill="none"/>
+<rect x="1113" y="832" width="404" height="66" rx="9" fill="#fff" stroke="#dce6d1"/>
+<text x="1126" y="856" font-size="12" fill="#a4b28e" font-weight="400">哪里没看懂？也可以直接说想怎么改…</text>
+<text x="1126" y="882" font-size="9" fill="#a6b48f" font-weight="400">追问留在这里 · 明确修改交给主 AI</text>
+<rect x="1477" y="865" width="26" height="25" rx="7" fill="#83a16a" stroke="none"/>
+<text x="1485" y="883" font-size="16" fill="#fff" font-weight="400">↑</text>
+<text x="67" y="969" font-size="16" fill="#5b7857" font-weight="600">一条自然的沟通路径</text>
+<text x="1260" y="969" font-size="11" fill="#96a88b" font-weight="400">解释不暂停开发 · 不另设审批流程</text>
+<rect x="65" y="996" width="342" height="113" rx="10" fill="#f8faf5" stroke="#dce6d4"/>
+<text x="83" y="1023" font-size="11" fill="#a3b196" font-weight="400">01</text>
+<text x="83" y="1050" font-size="17" fill="#637f54" font-weight="600">看懂变化</text>
+<text x="83" y="1080" font-size="11" fill="#98a98a" font-weight="400">这次改了什么，会影响谁？</text>
+<text x="419" y="1059" font-size="18" fill="#afbea5" font-weight="400">→</text>
+<rect x="443" y="996" width="342" height="113" rx="10" fill="#f8faf5" stroke="#dce6d4"/>
+<text x="461" y="1023" font-size="11" fill="#a3b196" font-weight="400">02</text>
+<text x="461" y="1050" font-size="17" fill="#637f54" font-weight="600">随时追问</text>
+<text x="461" y="1080" font-size="11" fill="#98a98a" font-weight="400">“为什么不用云端？”只解释</text>
+<text x="797" y="1059" font-size="18" fill="#afbea5" font-weight="400">→</text>
+<rect x="821" y="996" width="342" height="113" rx="10" fill="#f8faf5" stroke="#dce6d4"/>
+<text x="839" y="1023" font-size="11" fill="#a3b196" font-weight="400">03</text>
+<text x="839" y="1050" font-size="17" fill="#637f54" font-weight="600">明确提出修改</text>
+<text x="839" y="1080" font-size="11" fill="#98a98a" font-weight="400">“改成换手机也能看。”直接转交</text>
+<text x="1175" y="1059" font-size="18" fill="#afbea5" font-weight="400">→</text>
+<rect x="1199" y="996" width="342" height="113" rx="10" fill="#f8faf5" stroke="#dce6d4"/>
+<text x="1217" y="1023" font-size="11" fill="#a3b196" font-weight="400">04</text>
+<text x="1217" y="1050" font-size="17" fill="#637f54" font-weight="600">看见真实状态</text>
+<text x="1217" y="1080" font-size="11" fill="#98a98a" font-weight="400">已收到 ≠ 已实现 ≠ 已验证</text>
+<text x="66" y="1144" font-size="11" fill="#9cac91" font-weight="400">可点击版本：index.html · 三类场景 / 可点选结构图 / 追问 / 转交回执 / 历史解释</text>
+<text x="1393" y="1144" font-size="11" fill="#91a482" font-weight="400">VibeGuide 2.1</text>
+</g></svg>
