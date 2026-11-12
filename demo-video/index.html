@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>VibeGuide 演示视频</title>
+<link rel="stylesheet" href="sidebar.css">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="frame">
+  <div class="bg" id="bg-light"></div>
+  <div class="bg" id="bg-dark"></div>
+  <div id="horizon"></div>
+
+  <!-- 应用窗口：模拟 DSH Desktop + 右侧 VibeGuide 侧栏 -->
+  <div id="viewport"><div id="cam"><div id="app"></div></div></div>
+
+  <!-- 讲解层：字幕条 / 高亮 / 章节卡 / 片头片尾 -->
+  <div id="capbar"><div id="chip"></div><div id="cap"></div><div id="prog"><i></i><i></i><i></i><i></i></div></div>
+  <div id="overlay"></div>
+  <div id="chap"></div>
+  <div id="hero"></div>
+  <div id="cursor"><svg width="22" height="32" viewBox="0 0 22 32"><path d="M2 2v23.6l6.2-5.7 4.3 9.7 3.7-1.6-4.2-9.6 8.3-.6z" fill="#111" stroke="#fff" stroke-width="1.7" stroke-linejoin="round"/></svg></div>
+</div>
+<script src="engine.js"></script>
+<script src="scenario.js"></script>
+</body>
+</html>

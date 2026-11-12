@@ -15,3 +15,4 @@ evals/runs/
 .playwright-cli/
 output/
 .gstack/
+demo-video/out/
