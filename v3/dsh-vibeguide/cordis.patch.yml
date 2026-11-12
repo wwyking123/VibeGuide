@@ -1,0 +1,5 @@
+# Mount VibeGuide under its package name. The `dsh.client` block in package.json makes the
+# loader serve ./client (src/client/client.js) as the browser half.
+- insert:
+    - id: dsh-vibeguide
+      name: dsh-vibeguide

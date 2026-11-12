@@ -1,0 +1,22 @@
+{
+  "name": "dsh-vibeguide",
+  "version": "0.3.0-m1",
+  "private": true,
+  "type": "module",
+  "description": "VibeGuide for DeepSeek Harness: plain-language requirement interview, stuck-state alerts and select-to-explain for non-technical builders.",
+  "main": "src/host/index.js",
+  "exports": {
+    ".": { "default": "./src/host/index.js" },
+    "./client": { "default": "./src/client/client.js" },
+    "./package.json": "./package.json"
+  },
+  "files": ["src", "cordis.patch.yml", "README.md"],
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "test": "node --test --test-timeout=20000 tests/*.test.js"
+  },
+  "dsh": {
+    "bundle": { "patch": "./cordis.patch.yml" },
+    "client": { "platform": "web" }
+  }
+}

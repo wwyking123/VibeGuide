@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>VibeGuide 功能示意</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="frame">
+  <div class="bg" id="bg-light"></div>
+  <div class="bg" id="bg-dark"></div>
+  <div id="horizon"></div>
+
+  <!-- 讲解层：顶部小字、左侧章节大字、底部时间线 -->
+  <div id="top"></div>
+  <div id="left" class="out">
+    <div class="idx"><span id="l-no"></span><i></i><span id="l-phase"></span></div>
+    <h1 id="l-title"></h1>
+    <div class="accent" id="l-accent"></div>
+    <p class="desc" id="l-desc"></p>
+    <div class="where" id="l-where"></div>
+    <div id="l-more"></div>
+    <div class="beat" id="l-beat"><span></span></div>
+  </div>
+  <div id="tl"></div>
+
+  <!-- 一扇 DSH 对话窗口：VibeGuide 的触点都长在它里面 -->
+  <div id="win"></div>
+
+  <!-- 片头 / 片尾 -->
+  <div id="solo"></div>
+  <div id="hero"></div>
+
+  <div id="overlay"></div>
+  <div id="cursor"><svg width="22" height="32" viewBox="0 0 22 32"><path d="M2 2v23.6l6.2-5.7 4.3 9.7 3.7-1.6-4.2-9.6 8.3-.6z" fill="#111" stroke="#fff" stroke-width="1.7" stroke-linejoin="round"/></svg></div>
+</div>
+<script src="engine.js"></script>
+<script src="scenario.js"></script>
+</body>
+</html>
