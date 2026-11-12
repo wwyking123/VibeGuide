@@ -240,3 +240,40 @@ svg { display: block; flex: none; }
 #hero .acc.long { font-size: 30px; }
 #hero .cmd { margin-top: 30px; font: 500 15px/1 var(--mono); color: var(--c-ink2); padding: 13px 18px; border-radius: 12px; box-shadow: inset 0 0 0 1px var(--c-hair); transition-delay: .5s; }
 #hero .cmd b { color: var(--c-ink3); font-weight: 500; margin-right: 10px; }
+
+/* 主对话里的原生提问卡 */
+.qcard { align-self: flex-start; width: 520px; max-width: 100%; border-radius: 16px; background: #fff; box-shadow: inset 0 0 0 .5px var(--hair2), 0 10px 26px -18px #1c2b5052; padding: 12px 8px 8px; animation: rise .3s var(--ease) backwards; }
+.qcard .qh { display: flex; justify-content: space-between; font-size: 12px; line-height: 18px; color: var(--ink3); padding: 0 10px; }
+.qcard .qt { font-size: 15.5px; line-height: 26px; font-weight: 600; padding: 2px 10px 6px; }
+.qopt { display: flex; gap: 10px; padding: 7px 10px; border-radius: 10px; align-items: flex-start; }
+.qopt .rad { width: 14px; height: 14px; border-radius: 50%; box-shadow: inset 0 0 0 1.4px #c5cad1; margin-top: 5px; flex: none; }
+.qopt b { font-weight: 500; }
+.qopt em { font-style: normal; font-size: 11px; color: var(--accent); font-weight: 500; margin-left: 7px; }
+.qopt p { color: var(--ink3); font-size: 12.5px; line-height: 18px; }
+.qopt.pick { background: #f1f5fe; }
+.qopt.pick .rad { box-shadow: inset 0 0 0 4.2px var(--accent); }
+.qcard .qf { font-size: 12px; color: #a2a7af; padding: 4px 10px 2px 34px; }
+.qdone { display: flex; gap: 18px; font-size: 13px; line-height: 23px; color: var(--ink3); animation: rise .26s var(--ease) backwards; }
+.qdone span { display: inline-flex; align-items: center; gap: 6px; }
+.qdone .ic { color: #16a34a; }
+.qdone b { color: var(--ink); font-weight: 500; margin-left: 2px; }
+
+/* 03 说人话：两种回答左右对比 */
+.cmp { position: absolute; left: 60px; top: 14px; width: 1320px; height: 728px; border-radius: 14px; background: #f3f5faf7; backdrop-filter: blur(16px); display: flex; gap: 28px; padding: 30px 36px; animation: fade .35s ease backwards; }
+.cmp.out { animation: fadeout .3s ease-in both; }
+.cmp .col { flex: 0 0 calc(50% - 14px); min-width: 0; border-radius: 18px; background: #fff; box-shadow: 0 0 0 .5px var(--hair2), 0 26px 60px -32px #1c2b5066; display: flex; flex-direction: column; overflow: hidden; animation: rise .42s var(--ease) backwards; color: var(--ink); }
+.cmp .col h5 { flex: none; display: flex; align-items: center; gap: 9px; padding: 15px 22px 13px; font-size: 15.5px; font-weight: 600; box-shadow: inset 0 -.5px 0 var(--hair2); }
+.cmp .col h5 svg { color: var(--accent); }
+.cmp .col h5 small { margin-left: auto; font-weight: 400; font-size: 12.5px; color: var(--ink3); }
+.cmp .col.dim h5 { color: var(--ink2); }
+.cmp .body { flex: 1; min-height: 0; overflow: hidden; padding: 16px 22px 20px; position: relative; }
+.cmp .col.dim .body::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 60px; background: linear-gradient(to bottom, #fff0, #fff); }
+.tech { font-size: 14px; line-height: 23.5px; color: #3d424a; }
+.tech p + p, .tech ul + p, .tech p + ul { margin-top: 8px; }
+.tech ul { padding-left: 18px; }
+.tech li { margin: 3px 0; }
+.tech b { font-weight: 600; color: var(--ink); }
+.tech code { font: 12px/1 var(--mono); background: #0f11150f; border-radius: 4px; padding: 2px 4px; }
+.cmp .plain { font-size: 16px; line-height: 29px; }
+.cmp .plain .blk + .blk { margin-top: 16px; }
+#hero .four.five { gap: 38px; }
