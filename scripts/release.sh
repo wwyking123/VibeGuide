@@ -1,6 +1,6 @@
 #!/bin/sh
-# Packs the built plugin and commits it, with install.sh, to the local `release` branch.
-# install.sh downloads vibeguide.tgz from that branch. Pushing is a separate, deliberate step.
+# Packs the built plugin and commits it, with install.sh and install.ps1, to the local `release` branch.
+# Both installers download vibeguide.tgz from that branch. Pushing is a separate, deliberate step.
 set -eu
 cd "$(dirname "$0")/.."
 
@@ -13,14 +13,14 @@ work=$(mktemp -d)
 trap 'git worktree remove --force "$work/branch" 2>/dev/null || true; rm -rf "$work"' EXIT
 mkdir -p "$work/vibeguide/scripts"
 cp -R dist prompts package.json "$work/vibeguide/"
-cp scripts/install-desktop.mjs scripts/desktop.mjs "$work/vibeguide/scripts/"
+cp scripts/install-desktop.mjs scripts/desktop.mjs scripts/selftest.mjs "$work/vibeguide/scripts/"
 COPYFILE_DISABLE=1 tar -czf "$work/vibeguide.tgz" -C "$work" vibeguide
 
 if git show-ref --quiet refs/heads/release; then git worktree add --quiet "$work/branch" release
 elif git show-ref --quiet refs/remotes/origin/release; then git worktree add --quiet -b release "$work/branch" origin/release
 else git worktree add --quiet --orphan -b release "$work/branch"
 fi
-cp install.sh "$work/vibeguide.tgz" "$work/branch/"
+cp install.sh install.ps1 "$work/vibeguide.tgz" "$work/branch/"
 printf '%s\n' "$version" > "$work/branch/VERSION"
 git -C "$work/branch" add -A
 if git -C "$work/branch" diff --cached --quiet; then echo "release 分支已经是 $version（$source），没有变化。"

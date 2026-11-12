@@ -5,7 +5,8 @@ import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
-import { DEFAULT_APP, composeDesktopPatch, desktopHost, prepareDesktopPlugin } from './desktop.mjs';
+import { DEFAULT_APP, appLayout, composeDesktopPatch, desktopHost, prepareDesktopPlugin } from './desktop.mjs';
+import { selfTest } from './selftest.mjs';
 
 const { values } = parseArgs({ options: {
   app: { type: 'string', default: DEFAULT_APP },
@@ -20,7 +21,7 @@ if (values.help) {
   console.error('请用 --home 明确指定桌面版数据目录。');
   process.exitCode = 1;
 } else if (!process.versions.electron) {
-  const result = spawnSync(join(values.app, 'Contents', 'MacOS', 'DeepSeek Harness'), [
+  const result = spawnSync(appLayout(values.app).executable, [
     '--expose-internals', fileURLToPath(import.meta.url), ...process.argv.slice(2),
   ], { env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' }, stdio: 'inherit' });
   if (result.error) console.error(result.error.message);
@@ -40,6 +41,9 @@ if (values.help) {
   if (!Array.isArray(previous)) throw new Error('现有 profile patch 不是有效的数组，未修改。');
   // Validate the update shape before preparing files. The existing package copies stay intact.
   composeDesktopPatch(previous, { insert: [] }, values.upgrade);
+  // Prove this machine can store and read VibeGuide's records before anything is changed.
+  try { await selfTest(); }
+  catch (error) { throw new Error(`自检没有通过：${error instanceof Error ? error.message : error}`); }
   let storageRoot = join(home, 'vibeguide-p0-state');
   const previousStorage = async declaration => {
     const rows = host.parse(await readFile(declaration.config.path, 'utf8'));

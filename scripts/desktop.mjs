@@ -5,12 +5,17 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { assertDesktopVersion, SUPPORTED_DESKTOP_VERSIONS } from '../dist/guide/host/compatibility.js';
 
 export const DESKTOP_VERSION = SUPPORTED_DESKTOP_VERSIONS.at(-1);
-export const DEFAULT_APP = '/Applications/DeepSeek Harness.app';
+const WINDOWS = process.platform === 'win32';
+export const DEFAULT_APP = WINDOWS ? join(process.env.LOCALAPPDATA ?? '', 'Programs', 'DeepSeek Harness') : '/Applications/DeepSeek Harness.app';
+/** Where the app keeps its executable and bundled resources: a .app bundle on macOS, a plain folder on Windows. */
+export const appLayout = (app, windows = WINDOWS) => windows
+  ? { executable: join(app, 'DeepSeek Harness.exe'), resources: join(app, 'resources') }
+  : { executable: join(app, 'Contents', 'MacOS', 'DeepSeek Harness'), resources: join(app, 'Contents', 'Resources') };
 export const sourceRoot = fileURLToPath(new URL('..', import.meta.url));
 
 export async function desktopHost(app = DEFAULT_APP) {
   if (!process.versions.electron) throw new Error('桌面版适配必须通过 Electron 的 Node 模式运行。');
-  const runtime = join(app, 'Contents', 'Resources', 'app.asar', 'dsh');
+  const runtime = join(appLayout(app).resources, 'app.asar', 'dsh');
   const require = createRequire(join(runtime, 'package.json'));
   const anchor = require.resolve('@deepseek-ai/dsh/package.json');
   const pkg = JSON.parse(await readFile(anchor, 'utf8'));

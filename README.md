@@ -7,7 +7,7 @@ DeepSeek Harness 的插件，面向不懂技术、用 AI 做产品的人：
 - **白话沟通规则**：让主对话里的开发 AI 直接说清楚准备做什么、需要你决定什么、实际做到了什么。
 - **VibeGuide 侧栏**：随时问看不懂的地方，看项目做到哪一步；有具体改法时一键发到主对话。
 
-当前版本 **0.2.0-alpha.10，开发验证版**。适用于 macOS 桌面版 Harness `0.2.1-rc.2` / `0.2.1-rc.3`；同一 0.2.x 线上更新的 Harness 也能加载，设置页会提示“还没一起测试过”。还没有做过真人试用。
+当前版本 **0.2.0-alpha.11，开发验证版**。适用于 macOS 桌面版 Harness `0.2.1-rc.2` / `0.2.1-rc.3`；同一 0.2.x 线上更新的 Harness 也能加载，设置页会提示“还没一起测试过”。还没有做过真人试用。
 
 ## 侧栏怎么用
 
@@ -36,7 +36,21 @@ curl -fsSL https://cdn.jsdelivr.net/gh/wwyking123/VibeGuide@release/install.sh |
 
 看到“安装好了”后，完全退出并重新打开 Harness，新建会话，在输入框上方的模式菜单选 **VibeGuide**，从右侧打开 VibeGuide 侧栏。以后更新也是同一条命令。
 
-不需要 Node 或 git：脚本下载预先构建好的包，用 Harness 自带的运行环境执行安装器。安装器把插件放在 `~/.dsh/plugins/` 下，在 `profiles/desktop/cordis.patch.yml` 增加一项声明，原文件备份到 `~/.dsh/.vibeguide-backups/`。不会改动模型设置和其他配置。
+不需要 Node 或 git：脚本下载预先构建好的包，用 Harness 自带的运行环境执行安装器。安装器先在本机做一次自检（在临时文件夹里试存、试读），通过后才改动设置。它把插件放在 `~/.dsh/plugins/` 下，在 `profiles/desktop/cordis.patch.yml` 增加一项声明，原文件备份到 `~/.dsh/.vibeguide-backups/`。不会改动模型设置和其他配置。
+
+### Windows（测试中）
+
+Windows 版的安装命令已经写好，但**还没有在真实的 Windows 电脑上验证过**。愿意帮忙测试的话，打开 PowerShell，先运行只读的环境检查，把输出发给作者：
+
+```powershell
+$env:VIBEGUIDE_CHECK = '1'; irm https://raw.githubusercontent.com/wwyking123/VibeGuide/release/install.ps1 | iex
+```
+
+检查不会改动任何东西。确认没问题后，先完全退出 Harness，再运行安装：
+
+```powershell
+irm https://raw.githubusercontent.com/wwyking123/VibeGuide/release/install.ps1 | iex
+```
 
 - **停用**：新会话选「标准模式」。
 - **移除**：关闭 Harness，从 `cordis.patch.yml` 删掉 `id: vibeguide-presets` 那一项，再移走它引用的插件目录。
@@ -54,7 +68,7 @@ npm run dev:guide      # 启动同样的隔离环境，供浏览器里查看侧�
 npm run eval:sidebar   # 用你登录的 DeepSeek 账号做真实模型评测，会消耗额度
 ```
 
-`node scripts/smoke-guide-desktop.mjs --installed <插件目录>` 可以检查已安装的副本。`sh scripts/release.sh` 跑完测试后，把构建好的包和 `install.sh` 提交到本地 `release` 分支；`git push origin release` 之后，一键安装命令才会拿到新版本。评测用例在 `evals/sidebar/`，结果写到 `evals/runs/`（不进仓库）。最近一次结果见[侧栏模型评测](docs/reviews/2026-11-03-sidebar-model-eval.md)。
+`node scripts/smoke-guide-desktop.mjs --installed <插件目录>` 可以检查已安装的副本。`sh scripts/release.sh` 跑完测试后，把构建好的包和 `install.sh`、`install.ps1` 提交到本地 `release` 分支；`git push origin release` 之后，一键安装命令才会拿到新版本。评测用例在 `evals/sidebar/`，结果写到 `evals/runs/`（不进仓库）。最近一次结果见[侧栏模型评测](docs/reviews/2026-11-03-sidebar-model-eval.md)。
 
 ## 项目资料
 

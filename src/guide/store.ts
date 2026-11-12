@@ -1,7 +1,7 @@
 import { DatabaseSync } from 'node:sqlite';
 import { constants } from 'node:fs';
 import { lstat, mkdir, open, rename, readdir, rm, realpath } from 'node:fs/promises';
-import { join, resolve, parse, dirname, basename } from 'node:path';
+import { join, resolve, parse, dirname, basename, sep } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { GuideError } from './contracts.js';
 import type { Delivery, Explanation, GuideInput, Operation, Scope } from './contracts.js';
@@ -19,9 +19,17 @@ export type GuideRecord = {
 };
 const fresh = (scope: Scope): GuideRecord => ({ version: 1, scope, revision: 0, registered: -1, completed: -1, partial: false, jobs: [], operations: [], explanations: [], inputs: [], deliveries: [], requirements: [] });
 
+/** The folders below a filesystem root, in order. Windows separates them with a backslash. */
+export const pathParts = (path: string, root: string, separator: string = sep) => path.slice(root.length).split(separator).filter(Boolean);
+/** Flushing a directory entry is a POSIX durability step. Windows cannot open a directory this way and does not need it. */
+async function syncDirectory(path: string) {
+  if (process.platform === 'win32') return;
+  const directory = await open(path, 'r'); try { await directory.sync(); } finally { await directory.close(); }
+}
+
 async function safeDirectory(path: string) {
   let current = parse(path).root;
-  for (const part of path.slice(current.length).split('/').filter(Boolean)) {
+  for (const part of pathParts(path, current)) {
     current = join(current, part);
     try { await mkdir(current, { mode: 0o700 }); } catch (e) { if ((e as NodeJS.ErrnoException).code !== 'EEXIST') throw e; }
     const info = await lstat(current);
@@ -127,7 +135,7 @@ export class GuideStore {
         const file = await open(temp, 'wx', 0o600);
         try { await file.writeFile(data); await file.sync(); } finally { await file.close(); }
         await rename(temp, this.projectPath(projectId)); replaced = true;
-        const directory = await open(this.directory, 'r'); try { await directory.sync(); } finally { await directory.close(); }
+        await syncDirectory(this.directory);
         const saved = await this.loadProject(projectId);
         if (saved.revision !== value.revision) throw new Error('Project revision mismatch');
         return saved;
@@ -154,7 +162,7 @@ export class GuideStore {
         const handle = await open(temp, 'wx', 0o600);
         try { await handle.writeFile(data); await handle.sync(); } finally { await handle.close(); }
         await rename(temp, this.path(scope)); replaced = true;
-        const directory = await open(this.directory, 'r'); try { await directory.sync(); } finally { await directory.close(); }
+        await syncDirectory(this.directory);
         const saved = await this.load(scope);
         if (saved.revision !== value.revision) throw new Error('Guide revision mismatch.');
         return saved;
