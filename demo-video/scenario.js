@@ -65,6 +65,10 @@ const LAYERS = [
 ];
 const TAGS = { ok: '<span class="vg-tag vg-tag-ok">● 能用</span>', warn: '<span class="vg-tag vg-tag-warn">◐ 模拟</span>', missing: '<span class="vg-tag">○ 还没做</span>' };
 
+// 整体节奏：每句字幕和每个画面停留的时间都乘以这个数。觉得快就调大，觉得拖就调小。
+const PACE = 1.25;
+const pause = ms => sleep(ms * PACE);
+
 /* ───────── 界面骨架 ───────── */
 function buildShell() {
   $('#app').innerHTML = `
@@ -225,42 +229,42 @@ async function main() {
   /* ── 片头 ── */
   const four = '<div class="four five"><span><b>01</b>先问清楚</span><span><b>02</b>做到哪了</span><span><b>03</b>说人话</span><span><b>04</b>一张图看懂</span><span><b>05</b>看不懂就问</span></div>';
   $('#hero').innerHTML = `<h1>VibeGuide</h1><div class="acc long">Make technical systems legible to non-technical people.</div><div class="zh">不懂技术，也能用 AI 做开发</div>${four}`;
-  await sleep(400);
+  await pause(400);
   $('#hero').classList.add('show');
   shot('00-hero', 1800);
-  await sleep(4300);
+  await pause(4300);
   $('#hero').classList.remove('show');
-  await sleep(600);
+  await pause(600);
 
   /* ── 场景：它在哪，怎么开始 ── */
   $('#viewport').classList.add('show'); $('#capbar').classList.add('show');
-  await sleep(700);
+  await pause(700);
   $('#cursor').classList.add('show');
   say('它装在 <b>DeepSeek Harness</b> 里：主对话照常用，右边多一个侧栏');
-  await sleep(600);
+  await pause(600);
   ring($('#rsb'), 2200, -4, 8);
   callout($('#rtab-vg'), '右侧栏里的 <b>VibeGuide</b>', { side: 'left', ms: 2200, gap: 16 });
   shot('01-shell', 900);
-  await sleep(2900);
+  await pause(2900);
 
   say('开工前，把模式切到 <b>VibeGuide</b>');
   await click($('#modechip'));
   const menu = el(`<div class="modemenu"><div class="on"><b>标准模式</b><small>默认的开发方式</small></div><div id="pick-vg"><b>VibeGuide</b><small>用你看得懂的话沟通，侧栏同步进展</small></div></div>`);
   $('#ccard').append(menu);
-  await sleep(1100);
+  await pause(1100);
   await click($('#pick-vg'));
   menu.remove();
   $('#modechip').innerHTML = `VibeGuide${ic('chev', 13)}`; $('#modechip').classList.add('mode-on');
   $('#hmode').innerHTML = `${BOOK(13, 1.8)}VibeGuide`;
   $('#vg-gate').hidden = true; $('#vg-main').hidden = false; $('#vg-foot').hidden = false; $('#vg-gear').hidden = false;
   shot('02-mode', 700);
-  await sleep(1500);
+  await pause(1500);
 
   say('然后像平时一样，直接说你想做什么');
   await click($('#ctext'), { ax: .2 });
-  await type($('#ctext'), IDEA, { cps: 15 });
+  await type($('#ctext'), IDEA, { cps: 12 });
   $('#send').classList.remove('off');
-  await sleep(450);
+  await pause(450);
   await click($('#send'));
   setComposer(''); addUser(IDEA);
   $('#stitle').textContent = TITLE; $('#srow-t').textContent = TITLE; $('#vg-name').textContent = TITLE;
@@ -272,7 +276,7 @@ async function main() {
   const th0 = addStep(t1, 'spark', '深度求索中，用时 1 秒 ···');
   moveTo({ x: 700, y: 430 });
   shot('03-sent', 700);
-  await sleep(1400);
+  await pause(1400);
 
   /* ════════ 01 先问清楚 ════════ */
   await chapter(1, '开工前', '先问清楚', 'ask what matters.', '想法还模糊？它不会闷头就做：<b>只问会改变结果的事</b>', () => cam({ s: 1.17, x: W, y: 0 }, 10));
@@ -282,37 +286,37 @@ async function main() {
   await stream(md0, '<p>开工前，先确认两件会影响做法的事。</p>', { cps: 60, onStep: () => pin(flow()) });
   let qcard = showQuestion(t1, 0);
   setStatus('active', '等你在主对话选择');
-  await sleep(700);
+  await pause(700);
   ring(qcard, 2600, 4, 18);
   shot('03b-question', 700);
-  await sleep(2600);
+  await pause(2600);
   say('问的不是技术，是<b>你答得上来的事</b>；每个选项都写着选了会怎样');
   await moveTo($('.qopt', qcard), { ax: .5 });
-  await sleep(3400);
+  await pause(3400);
   say('拿不准？侧栏也列着这道题，可以让它<b>帮你看懂这些选项</b>');
   ring($('#help-choice'), 2600, 5, 9);
   shot('03c-sidebar-choice', 700);
-  await sleep(3400);
+  await pause(3400);
   say('选好了，在主对话里点一下');
   await click($('.qopt', qcard), { ax: .3 });
   $('.qopt', qcard).classList.add('pick');
-  await sleep(700);
+  await pause(700);
   qcard = showQuestion(t1, 1);
   shot('03d-question2', 600);
-  await sleep(2000);
+  await pause(2000);
   await click($('.qopt', qcard), { ax: .3 });
   $('.qopt', qcard).classList.add('pick');
-  await sleep(700);
+  await pause(700);
   qcard.outerHTML = `<div class="qdone">${QS.map(q => `<span>${ic('check', 13, 1.9)}${q.short[0]}<b>${q.short[1]}</b></span>`).join('')}</div>`;
   $('#choices').innerHTML = '';
   setStatus('active', 'AI 正在处理');
   say('答完两题，它才开工');
   const th1 = addStep(t1, 'spark', '深度求索中，用时 1 秒 ···');
   let thinking = true;
-  (async () => { for (let s = 2; thinking; s++) { await sleep(1000); if (thinking) $('span', th1).textContent = `深度求索中，用时 ${s} 秒 ···`; } })();
+  (async () => { for (let s = 2; thinking; s++) { await pause(1000); if (thinking) $('span', th1).textContent = `深度求索中，用时 ${s} 秒 ···`; } })();
   moveTo({ x: 700, y: 470 });
   shot('03e-answered', 600);
-  await sleep(2200);
+  await pause(2200);
 
   /* ════════ 02 做到哪了 ════════ */
   await chapter(2, '做的过程中', '做到哪了', 'always in view.', '屏幕在滚，你不用猜：<b>AI 在忙什么、你的要求到哪一步</b>，一直在旁边', () => camSide(1.42, 0, 10));
@@ -330,28 +334,28 @@ async function main() {
   setStatus('active', '正在修改', '改了 2 个文件');
   await runStep(t1, 'file', '正在写入文件', '已写入文件', 'src/FillForm.jsx', 700);
   setStatus('active', '正在修改', '改了 3 个文件');
-  await sleep(500);
+  await pause(500);
   say('你提过的要求，在下面<b>一条条记着</b>');
   ring($('#req-r1'), 2400, 5, 8);
   await runStep(t1, 'file', '正在写入文件', '已写入文件', 'src/Summary.jsx', 760);
   setStatus('active', '正在修改', '改了 4 个文件');
   await runStep(t1, 'file', '正在写入文件', '已写入文件', 'src/storage.js', 700);
   setStatus('active', '正在修改', '改了 5 个文件');
-  await sleep(700);
+  await pause(700);
   say('做完一段，它会自己<b>检查一遍</b>');
   setStatus('active', '正在检查', '改了 5 个文件');
   await runStep(t1, 'term', '正在运行命令', '执行了命令', 'npm run build', 1500);
   const md2 = el('<div class="md"></div>'); t1.append(md2);
-  await stream(md2, reply('m'), { cps: 150, chunk: 3, onStep: () => pin(flow()) });
+  await stream(md2, reply('m'), { cps: 115, chunk: 3, onStep: () => pin(flow()) });
   t1.append(el(`<div class="acts"><span class="dur">已完成，用时 1分08秒</span><span class="ib">${ic('copy', 15)}</span><span class="ib">${ic('thumb', 15)}</span><span class="ib">${ic('redo', 15)}</span></div>`));
   pin(flow()); setRunning(false);
   setStatus('ok', '上次检查通过', 'AI 已停下 · 改了 5 个文件');
   reqTry('r1');
   say('AI 说做好了，这里写的是「<b>可以试用了</b>」：等你亲自试过才算数');
-  await sleep(500);
+  await pause(500);
   ring($('#req-r1 .vg-badge'), 2600, 4, 12);
   shot('05-try', 600);
-  await sleep(3800);
+  await pause(3800);
 
   /* ════════ 03 说人话 ════════ */
   shot('06z-chapter', 1500);
@@ -364,36 +368,36 @@ async function main() {
   $('#overlay').append(board);
   $('#cursor').classList.remove('show');
   say('同一轮工作，换成<b>标准模式</b>，回答通常是这样的');
-  await sleep(500);
+  await pause(500);
   const techBody = $('#col-std .body');
-  await stream($('#tech'), TECH, { cps: 230, chunk: 4, onStep: () => pin(techBody) });
+  await stream($('#tech'), TECH, { cps: 170, chunk: 4, onStep: () => pin(techBody) });
   $('#col-std h5 small').textContent = `约 ${count($('#tech'))} 字`;
   shot('07-standard', 500);
-  await sleep(1100);
+  await pause(1100);
   say('内容都对，但得<b>先懂技术</b>才读得下去');
   callout($('#col-std'), '<b>术语一个接一个</b>，没做完的埋在细节里', { side: 'right', ms: 3000, gap: -290, shift: 150 });
   shot('07b-standard-note', 600);
-  await sleep(3600);
+  await pause(3600);
   say('<b>VibeGuide 模式</b>下，同样的事实这样说');
   board.append(colVg);
-  await sleep(450);
-  await stream($('#plain'), reply('c'), { cps: 95, chunk: 2 });
+  await pause(450);
+  await stream($('#plain'), reply('c'), { cps: 75, chunk: 2 });
   $('#col-vg h5 small').textContent = `约 ${count($('#plain'))} 字`;
   shot('07c-both', 600);
-  await sleep(2400);
+  await pause(2400);
   say('先说<b>你能看到什么、怎么试</b>');
   ring($('#c-what'), 2500, 8, 10);
   shot('08-what', 600);
-  await sleep(3000);
+  await pause(3000);
   say('出现术语，顺手讲清<b>对你意味着什么</b>');
   ring($('#c-term'), 2700, 8, 10);
   shot('08b-term', 600);
-  await sleep(3200);
+  await pause(3200);
   say('只是样子的、还没做的，它<b>主动摊开说</b>');
   ring($('#c-honest'), 2900, 8, 10);
   shot('09-honest', 600);
-  await sleep(3500);
-  board.classList.add('out'); await sleep(320); board.remove();
+  await pause(3500);
+  board.classList.add('out'); await pause(320); board.remove();
   $('#cursor').classList.add('show');
 
   /* ════════ 04 一张图看懂 ════════ */
@@ -407,39 +411,39 @@ async function main() {
   const wait = el('<p role="status" class="vg-muted">正在整理项目概览…</p>');
   $('#pane-structure').prepend(wait);
   shot('10-generating', 500);
-  await sleep(1700);
+  await pause(1700);
   wait.remove();
   say('从<b>你看得到的页面</b>，到<b>数据存在哪里</b>，一层层排好');
   await showOverview();
   moveTo({ x: 800, y: 560 });
   shot('11-structure', 600);
-  await sleep(2400);
+  await pause(2400);
   scrollEnd(vgc, 1300);
   await camSide(1.42, H, 1300);
   shot('12-structure-end', 500);
-  await sleep(1500);
+  await pause(1500);
   say('每一块都标着：<b>能用</b>、<b>模拟</b>，还是<b>还没做</b>');
   ring($('#part-shared'), 2600, 4, 10);
   callout($('#part-shared'), '你要了，但<b>还没做</b>', { side: 'left', ms: 2600, gap: 16 });
   shot('13-missing', 600);
-  await sleep(3300);
+  await pause(3300);
   scrollTo(vgc, 0, 1000);
   await camSide(1.42, 40, 1000);
   say('「模拟」是：界面上有了，<b>其实还不能用</b>。点开看看');
-  await sleep(400);
+  await pause(400);
   const week = $('#part-week');
   ring(week, 1600, 4, 10);
-  await sleep(1300);
+  await pause(1300);
   await click(week, { ax: .35 });
   week.setAttribute('aria-pressed', 'true');
   const detail = el(`<div class="vg-detail"><p><span class="vg-sub">对使用的影响：</span>按钮已经在页面上，但点了不会换到别的周，现在只能看本周。</p>
     <p class="vg-sub">AI 推测：页面里有切换按钮，没找到按周读取总结的代码。</p><button class="vg-link" type="button">问问这部分</button></div>`);
   week.after(detail);
-  await sleep(500);
+  await pause(500);
   say('它会说清<b>对你用起来有什么影响</b>，不让你被“看起来有”骗到');
   moveTo({ x: 780, y: 520 });
   shot('14-detail', 700);
-  await sleep(4300);
+  await pause(4300);
 
   /* ════════ 05 看不懂就问 ════════ */
   const term = $('#term');
@@ -449,17 +453,17 @@ async function main() {
   });
   say('主 AI 的话里有看不懂的词？<b>划一下</b>');
   await moveTo(term, { ax: 0, ay: .55, dx: -1 });
-  $('#cursor').classList.add('down'); await sleep(160);
+  $('#cursor').classList.add('down'); await pause(160);
   term.classList.add('on');
   await moveTo(term, { ax: 1, ay: .55, dx: 2, ms: 340 });
   $('#cursor').classList.remove('down');
-  await sleep(260);
+  await pause(260);
   const cr = lrect(center), tr = lrect(term);
   const askBtn = el(`<button type="button" class="vg-ask" data-above="true">${BOOK(14, 1.8)}问问这个</button>`);
   center.append(askBtn);
   askBtn.style.left = (tr.x - cr.x + tr.w / 2) + 'px'; askBtn.style.top = (tr.y - cr.y - 8) + 'px';
   shot('15-select', 600);
-  await sleep(1700);
+  await pause(1700);
   await click(askBtn);
   askBtn.remove(); term.classList.remove('on');
   $('#intro').hidden = true;
@@ -471,19 +475,19 @@ async function main() {
   say('它带着这个词进了侧栏。直接发送，就是问“<b>这是什么意思</b>”');
   ring($('#vg-foot form'), 2400, 4, 12);
   shot('16-quote', 700);
-  await sleep(3100);
+  await pause(3100);
   say('也可以问你真正关心的');
   await click(ta, { ax: .25, ay: .3 });
   moveTo(ta, { ax: .8, ay: .9, ms: 320 });
-  await type(ta, QUESTION, { cps: 11 });
+  await type(ta, QUESTION, { cps: 9 });
   shot('16b-typed', 300);
-  await sleep(700);
+  await pause(700);
   await click($('#vg-send'));
   $('#quote-slot').innerHTML = ''; ta.classList.remove('focus'); ta.innerHTML = `<span class="ph">${ASK_PH}</span>`;
   $('#vg-send').textContent = '停止讲解'; $('#vg-send').classList.remove('vg-primary');
   $('#vg-busy').innerHTML = '<p role="status" class="vg-muted">正在讲解你的问题…</p>';
   shot('17-asking', 500);
-  await sleep(1300);
+  await pause(1300);
   await camSide(1.42, 0, 900);
   $('#vg-busy').innerHTML = ''; $('#vg-send').textContent = '发送'; $('#vg-send').classList.add('vg-primary'); $('#vg-send').disabled = true;
   $('#answers').innerHTML = `<div class="vg-label">讲解</div><div class="vg-list"><details class="vg-item vg-answer" open>
@@ -491,18 +495,18 @@ async function main() {
   say('回答结合的是<b>你的项目</b>，而且只在侧栏里，不打乱主对话');
   moveTo({ x: 760, y: 500 });
   await stream($('#ans'), `<p><strong>现在还不能。</strong>总结只存在你这台电脑的浏览器里。组员在自己电脑上打开，看到的是一份各存各的空白记录，你也看不到他们交的内容。</p>
-    <p>想让 8 个人都能交，得把总结存到全组都能访问的地方。</p>`, { cps: 70 });
+    <p>想让 8 个人都能交，得把总结存到全组都能访问的地方。</p>`, { cps: 58 });
   shot('18-answer', 600);
-  await sleep(2600);
+  await pause(2600);
   $('#ans').after(el(`<div class="vg-suggestion" id="sug"><p>可以这样改：${SUGGESTION}</p><button type="button" id="sug-send">发到主对话</button></div>`));
   say('想清楚要改？点「<b>发到主对话</b>」，改法它替你写好');
-  await sleep(500);
+  await pause(500);
   ring($('#sug'), 2200, 4, 10);
   shot('19-suggestion', 600);
-  await sleep(2700);
+  await pause(2700);
   await click($('#sug-send'));
   $('#sug-send').textContent = '正在写给主 AI…'; $('#sug-send').disabled = true;
-  await sleep(1300);
+  await pause(1300);
   await camFull(850);
   $('#sug-send').outerHTML = '<span class="vg-sub">已发到主对话</span>';
   $('#receipts').innerHTML = `<article class="vg-receipt"><div class="vg-receipt-state vg-receipt-accepted">已发到主对话</div><p class="vg-text">${SUGGESTION}</p>
@@ -513,35 +517,35 @@ async function main() {
   const t2 = addTurn();
   addStep(t2, 'spark', '深度求索中，用时 1 秒 ···');
   say('一句话变成<b>写清楚的要求</b>，之前的约定也一并带上');
-  await sleep(500);
+  await pause(500);
   ring($('.bubble', sent), 3000, 5, 22);
   moveTo({ x: 930, y: 655 });
   shot('20-handoff', 700);
-  await sleep(4000);
+  await pause(4000);
   say('这条新要求也记进了清单，状态是「<b>还在做</b>」');
   await scrollEnd(vgc, 900);
   ring($('#req-r2'), 2400, 5, 8);
   shot('21-listed', 600);
-  await sleep(3200);
+  await pause(3200);
   say('看得懂，跟得上，<b>说了算</b>');
   shot('21z-last', 900);
-  await sleep(2800);
+  await pause(2800);
 
   /* ── 片尾 ── */
   $('#cursor').classList.remove('show');
   say(''); $('#capbar').classList.remove('show');
   $('#viewport').classList.remove('show');
-  await sleep(500);
+  await pause(500);
   $('#frame').classList.add('dark', 'end');
   $('#hero').className = 'end';
   $('#hero').innerHTML = `<h1>VibeGuide</h1><div class="acc long">Make technical systems legible to non-technical people.</div>${four}
     <div class="rules"><span>Mac + DeepSeek Harness 桌面版</span><span>一行命令安装</span><span>开源免费</span></div>
     <div class="cmd"><b>$</b>curl -fsSL https://raw.githubusercontent.com/wwyking123/VibeGuide/release/install.sh | sh</div>
     <div class="fine">github.com/wwyking123/VibeGuide · 画面为功能示意，对话内容为演示编排</div>`;
-  await sleep(500);
+  await pause(500);
   $('#hero').classList.add('show');
   shot('22-outro', 2300);
-  await sleep(6500);
+  await pause(6500);
 }
 
 boot(main);

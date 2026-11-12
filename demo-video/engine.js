@@ -191,7 +191,7 @@ async function chapter(n, phase, title, accent, sub, mid) {     // mid：章节�
   $('#chip').innerHTML = `<i>0${n}</i>${title}`; $('#chip').classList.add('show');
   $('#prog').classList.add('show');
   $$('#prog i').forEach((d, i) => { d.classList.toggle('on', i === n - 1); d.classList.toggle('past', i < n - 1); });
-  await sleep(2000);
+  await sleep(2700);
   box.classList.remove('show');
   await sleep(420);
 }
