@@ -1,4 +1,5 @@
 import type { Preferences } from './support-types.js';
+import { DEFAULT_QUESTION, splitQuote } from './quote.js';
 export type Concept = { id: string; aliases: string[]; title: string; impact: string; example: string; en: { title: string; impact: string; example: string } };
 export const concepts: Concept[] = [
   ['frontend', '前端', 'frontend,前端', '用户直接看到和操作的页面。页面看起来完成了，不代表保存、登录等背后的能力已经可用。', '例如按钮可以显示，但点击后还需要真正保存回答。', 'Frontend', 'The screens people use. A finished screen does not prove that saving or signing in works.', 'A visible Save button still needs working storage.'],
@@ -17,7 +18,9 @@ export const concepts: Concept[] = [
   ['version', '版本', '版本,version', '某一时刻的内容状态。查看旧版本能比较变化，但并不意味着已经恢复代码或远程数据。', '例如旧结构图只表示当时整理出的职责。', 'Version', 'A state at a point in time. Looking at an older version does not restore code or remote data.', 'An old structure diagram describes responsibilities as understood then.'],
 ].map(([id, title, aliases, impact, example, enTitle, enImpact, enExample]) => ({ id, title, aliases: aliases.split(','), impact, example, en: { title: enTitle, impact: enImpact, example: enExample } }));
 export function lookupConcept(question: string): Concept | undefined {
-  const q = question.trim().replace(/[？?。！!]+$/, '').trim().toLowerCase();
+  // A selected term sent with the default question is answered like the term typed on its own.
+  const quoted = splitQuote(question);
+  const q = (quoted?.question === DEFAULT_QUESTION ? quoted.quote : question).trim().replace(/[？?。！!]+$/, '').trim().toLowerCase();
   return concepts.find(row => row.aliases.some(alias => [alias, `${alias}是什么`, `什么是${alias}`, `解释一下${alias}`, `解释${alias}`, `what is ${alias}`, `explain ${alias}`].some(form => form.replace(/\s+/g, '') === q.replace(/\s+/g, ''))));
 }
 export function conceptText(row: Concept, preferences: Preferences, question = '') {

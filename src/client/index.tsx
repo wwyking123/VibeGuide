@@ -6,6 +6,8 @@ import { readOutbox, saveOutbox, clearOutbox } from './outbox.js';
 import { ProjectPanels } from './project-panels.js';
 import type { GuideTab } from './project-panels.js';
 import type { Focus } from '../guide/project-types.js';
+import { SelectionAsk, SessionProbe, onQuote, takeQuote } from './selection-ask.js';
+import { DEFAULT_QUESTION, clip, quoteStatement } from '../guide/quote.js';
 
 export const inject = ['slots', 'sidebarRightTabs', 'sidebarRight', 'connection'];
 const TAB = 'vibeguide';
@@ -49,6 +51,7 @@ export function GuidePanel({ sessionId, rpc }: { sessionId: string; rpc: Rpc }) 
   const [error, setError] = useState('');
   const [readError, setReadError] = useState('');
   const [question, setQuestion] = useState('');
+  const [quote, setQuote] = useState<string>();
   const [answers, setAnswers] = useState<Explanation[]>([]);
   const [busy, setBusy] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -119,6 +122,19 @@ export function GuidePanel({ sessionId, rpc }: { sessionId: string; rpc: Rpc }) 
     };
   }, [sessionId]);
 
+  useEffect(() => {
+    const take = () => {
+      const text = takeQuote(sessionId);
+      if (text) { setQuote(text); setFocus(undefined); setTab('progress'); }
+    };
+    take();
+    return onQuote(take);
+  }, [sessionId]);
+  const ready = !!snapshot;
+  useEffect(() => {
+    if (quote && ready) panel.current?.querySelector<HTMLTextAreaElement>('.vg-composer textarea')?.focus();
+  }, [quote, ready]);
+
   async function ask(value: string, choice?: GuideSnapshot['choices'][number]) {
     if (!snapshot || asking.current || !value.trim()) return;
     asking.current = true; setBusy(true); setError('');
@@ -144,12 +160,12 @@ export function GuidePanel({ sessionId, rpc }: { sessionId: string; rpc: Rpc }) 
   }
 
   async function submit() {
-    if (!snapshot || asking.current || (!question.trim() && !outbox)) return;
+    if (!snapshot || asking.current || (!question.trim() && !outbox && !quote)) return;
     const request: InputRequest = outbox ?? { sessionId, projectId: snapshot.scope.projectId,
-      clientRequestId: crypto.randomUUID(), statement: question, basis: snapshot.basis, ...(focus ? { context: focus.ref } : {}) };
+      clientRequestId: crypto.randomUUID(), statement: quote ? quoteStatement(quote, question) : question, basis: snapshot.basis, ...(focus && !quote ? { context: focus.ref } : {}) };
     try { saveOutbox(window.localStorage, request); }
     catch (e) { setError(e instanceof Error ? e.message : '提交标识未能保存，这次尚未发送。'); return; }
-    setOutbox(request); asking.current = true; setBusy(true); setSubmitting(true); setError('');
+    setOutbox(request); setQuote(undefined); asking.current = true; setBusy(true); setSubmitting(true); setError('');
     const controller = new AbortController(); explanation.current = controller; const epoch = generation.current;
     try {
       const result = await rpc<InputResult>('submit', request, AbortSignal.any([controller.signal, AbortSignal.timeout(60000)]));
@@ -228,19 +244,20 @@ export function GuidePanel({ sessionId, rpc }: { sessionId: string; rpc: Rpc }) 
         {delivery.notice && <p className="vg-notice">{delivery.notice}</p>}
       </article>)}
       </div>
-      <ProjectPanels key={snapshot.scope.projectId} answers={answers} tab={tab} snapshot={snapshot} rpc={rpc} onFocus={value => { setFocus(value); panel.current?.querySelector<HTMLTextAreaElement>('.vg-composer textarea')?.focus(); }} onChanged={() => void refresh(true)} onName={setProductName} handoff={{ send: source => void handoff(source), sending, ready: snapshot.model.status === 'ready',
+      <ProjectPanels key={snapshot.scope.projectId} answers={answers} tab={tab} snapshot={snapshot} rpc={rpc} onFocus={value => { setFocus(value); setQuote(undefined); panel.current?.querySelector<HTMLTextAreaElement>('.vg-composer textarea')?.focus(); }} onChanged={() => void refresh(true)} onName={setProductName} handoff={{ send: source => void handoff(source), sending, ready: snapshot.model.status === 'ready',
         sent: new Set(snapshot.inputs?.filter(row => row.handoff && row.state !== 'failed').map(row => handoffKey(row.handoff!))) }} onQuestion={value => { setQuestion(value); panel.current?.querySelector<HTMLTextAreaElement>('.vg-composer textarea')?.focus(); }}/>
     </>}
     </div>
     {snapshot && <footer className="vg-composer">
       <form onSubmit={event => { event.preventDefault(); void submit(); }}>
+        {quote && !outbox && <div className="vg-quote"><span>「{clip(quote, 80)}」</span><button type="button" className="vg-icon" aria-label="取消引用" title="取消引用" onClick={() => setQuote(undefined)}>×</button></div>}
         {focus && <div className="vg-notice">正在追问：{focus.label} <button type="button" onClick={() => setFocus(undefined)} disabled={!!outbox}>取消关联</button></div>}
         {snapshot.model.status === 'not_configured' && <p className="vg-notice">主对话尚未选择模型，选择后即可请求 AI 讲解。</p>}
         {outbox && !submitting && <p className="vg-notice">上次提交的响应尚待核对。点“核对并重试”会使用同一个提交标识。</p>}
         <div className="vg-input"><textarea id={`vg-question-${sessionId}`} aria-label="提问" className={(outbox?.statement ?? question) ? 'vg-filled' : ''} value={outbox?.statement ?? question} disabled={!!outbox || submitting} onChange={event => setQuestion(event.target.value)}
-          onKeyDown={event => { if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} maxLength={4000} rows={1} placeholder="想弄明白什么？要修改请在主对话说"/>
+          onKeyDown={event => { if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} maxLength={quote ? 2500 : 4000} rows={1} placeholder={quote ? `直接发送会问“${DEFAULT_QUESTION}”，也可以写下你的问题` : '想弄明白什么？要修改请在主对话说'}/>
         {busy ? <button type="button" onClick={() => explanation.current?.abort()}>停止讲解</button>
-          : <button className="vg-primary" disabled={busy || (!question.trim() && !outbox)}>{submitting ? '提交中…' : outbox ? '核对并重试' : '发送'}</button>}</div>
+          : <button className="vg-primary" disabled={busy || (!question.trim() && !outbox && !quote)}>{submitting ? '提交中…' : outbox ? '核对并重试' : '发送'}</button>}</div>
         {busy && <p role="status" className="vg-muted">正在讲解你的问题…</p>}
       </form>
     </footer>}
@@ -259,6 +276,21 @@ export function apply(ctx: any) {
   ctx.effect(() => ctx.slots.inject('sidebar.right.pane.tab.title', () => ctx.slots.register({
     name: 'sidebar.right.pane.tab.title', key: TAB,
   }, () => <span>VibeGuide</span>)));
+  // Asking about selected text only makes sense where the sidebar works, so check the session once and remember it briefly.
+  const modes = new Map<string, { at: number; ok: Promise<boolean> }>();
+  const allowed = (sessionId: string) => {
+    const known = modes.get(sessionId);
+    if (known && Date.now() - known.at < 30000) return known.ok;
+    const ok = rpc('getSnapshot', { sessionId }, AbortSignal.timeout(5000)).then(() => true, () => false);
+    modes.set(sessionId, { at: Date.now(), ok });
+    return ok;
+  };
+  ctx.effect(() => ctx.slots.inject('conversation.input.dock', () => ctx.slots.register({
+    name: 'conversation.input.dock', id: `${TAB}-session`, order: 90,
+  }, ({ sessionId }: { sessionId?: string }) => <SessionProbe sessionId={sessionId}/>)));
+  ctx.effect(() => ctx.slots.inject('shell.overlay', () => ctx.slots.register({
+    name: 'shell.overlay', id: `${TAB}-selection`,
+  }, () => <SelectionAsk allowed={allowed} open={() => { if (ctx.sidebarRight.mounted.getSnapshot()) ctx.sidebarRight.openTab(TAB); }}/>)));
   ctx.effect(() => ctx.slots.inject('conversation.session.header.utilities', () => ctx.slots.register({
     name: 'conversation.session.header.utilities', id: TAB, order: 10,
   }, () => <button type="button" title="打开 VibeGuide 理解助手" onClick={() => {
@@ -298,7 +330,8 @@ const styles = `
 .vg-actions{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.vg-attached{margin:6px 0}
 .vg-panel fieldset{border:1px solid var(--vg-line);border-radius:8px;margin:10px 0;min-width:0}.vg-panel label{display:block;margin:8px 0;overflow-wrap:anywhere;font-size:12px;color:var(--vg-sub)}.vg-panel input[type=checkbox]{display:inline-block;width:auto;margin-right:6px}
 .vg-panel select,.vg-panel input{display:block;width:100%;background:transparent;color:var(--vg-text);border:1px solid var(--vg-line-strong);border-radius:7px;padding:6px 8px;font:inherit;font-size:13px;margin:4px 0 0}
-.vg-composer{flex-shrink:0;padding:10px 16px 14px;border-top:1px solid var(--vg-line)}.vg-input{display:flex;gap:8px;align-items:flex-end}.vg-input button{flex-shrink:0}
+.vg-composer{flex-shrink:0;padding:10px 16px 14px;border-top:1px solid var(--vg-line)}
+.vg-quote{display:flex;align-items:flex-start;gap:6px;background:var(--vg-soft);border-left:2px solid var(--vg-accent);border-radius:4px;padding:6px 6px 6px 10px;margin-bottom:8px;font-size:12px;color:var(--vg-sub);animation:vg-in .18s ease-out}.vg-quote span{flex:1;min-width:0;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}.vg-input{display:flex;gap:8px;align-items:flex-end}.vg-input button{flex-shrink:0}
 .vg-panel textarea{font:inherit;line-height:1.5;background:transparent;color:inherit;border:1px solid var(--vg-line-strong);border-radius:18px;padding:8px 14px;width:100%;resize:none;min-height:36px;max-height:160px;margin:0;transition:min-height .15s}.vg-panel textarea:focus{outline:none;border-color:var(--vg-accent);min-height:80px;border-radius:12px}.vg-panel textarea.vg-filled{min-height:80px;border-radius:12px}
 .vg-panel .vg-composer .vg-primary{border-radius:16px;padding:6px 14px}.vg-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
 @keyframes vg-in{from{opacity:0;transform:translateY(-4px)}}@keyframes vg-fade{from{opacity:0}}@keyframes vg-breathe{from{opacity:.5}}@keyframes vg-pulse{from{box-shadow:0 0 0 0 var(--vg-accent)}70%,to{box-shadow:0 0 0 7px transparent}}

@@ -1,5 +1,6 @@
 import { SupportPanel } from './support-panel.js';
 import { Fragment, useEffect, useRef, useState } from 'react';
+import { clip, splitQuote } from '../guide/quote.js';
 import { WorkPanels } from './work-panels.js';
 import { AnalysisCard, SendButton } from './analysis-card.js';
 import type { Handoff } from './analysis-card.js';
@@ -136,6 +137,12 @@ function Layers({ overview, selected, goalNodes, onSelect, onFocus }: { overview
 }
 
 /** Keep the latest trouble explanation, the failures it is about and its actions in one card, above requirements. */
+/** A question asked about selected text shows the quote small and the question itself as the title. */
+function quoted(question: string) {
+  const parts = splitQuote(question);
+  return parts ? <><small className="vg-sub">关于「{clip(parts.quote, 40)}」<br/></small>{parts.question}</> : question;
+}
+
 export function ProgressAnswers({ answers, view, onQuestion, onFocus, handoff }: {
   answers: Explanation[]; view?: ProjectView; onQuestion: (text: string) => void; onFocus: (focus: Focus) => void; handoff: Handoff;
 }) {
@@ -155,7 +162,7 @@ export function ProgressAnswers({ answers, view, onQuestion, onFocus, handoff }:
       : stuck && <section className="vg-card" aria-label="卡住时的下一步"><h3>还没有顺利通过</h3>{facts}{ask}</section>}
     {!!shown.length && <div className="vg-label">讲解</div>}
     <div className="vg-list">{shown.map(answer => <details key={answer.id} className="vg-item vg-answer" open={answer.id === newest?.id}>
-      <summary>{answer.contextLabel && <small className="vg-sub">关于 {answer.contextLabel}<br/></small>}{answer.choiceId ? '这道选择题的各个选项' : answer.question}{answer.state === 'historical' && <small className="vg-sub"> · 之前的</small>}</summary>
+      <summary><span>{answer.contextLabel && <small className="vg-sub">关于 {answer.contextLabel}<br/></small>}{answer.choiceId ? '这道选择题的各个选项' : quoted(answer.question)}{answer.state === 'historical' && <small className="vg-sub"> · 之前的</small>}</span></summary>
       <Markdown text={answer.text}/>
       {answer.suggestion && answer.state !== 'historical' && <div className="vg-suggestion"><p>可以这样改：{answer.suggestion}</p><SendButton source={{ kind: 'explanation', id: answer.id }} handoff={handoff}/></div>}
     </details>)}</div>
