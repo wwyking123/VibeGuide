@@ -52,5 +52,12 @@ test('the Windows installer avoids syntax that the built-in PowerShell 5.1 canno
   assert.doesNotMatch(code, /\bexit\b/, 'exit would close the window when run through iex');
   // A variable name must never run straight into a full-width character.
   assert.doesNotMatch(source, /\$[A-Za-z_][A-Za-z0-9_]*[\u3000-\u9fff\uff00-\uffef]/);
-  assert.match(source, /Install-VibeGuide\s*$/);
+  // Mirrors serve the script without a charset, and PowerShell 5.1 then reads it as Latin-1.
+  // The script must notice and restore itself; that only works while the misreading loses nothing
+  // and produces no character PowerShell would treat as a quote or a dash.
+  assert.match(source, /if \('中'\.Length -eq 1\) \{ Install-VibeGuide \}\s*\nelse \{[^]*GetEncoding\(28591\)[^]*\}\s*$/);
+  const misread = readFileSync(new URL('../install.ps1', import.meta.url)).toString('latin1');
+  assert.equal(Buffer.from(misread, 'latin1').toString('utf8'), source);
+  assert.doesNotMatch(misread, /[\u2010-\u201f]/);
+  assert.notEqual([...misread.match(/if \('([^']+)'\.Length -eq 1\)/)[1]].length, 1, 'the probe character must read as more than one character when misdecoded');
 });

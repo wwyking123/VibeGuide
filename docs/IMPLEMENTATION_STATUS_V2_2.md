@@ -106,7 +106,7 @@ alpha.8 到 alpha.11 之间，仓库里没有 `smoke:guide` 的结果记录。�
 ## 已知问题
 
 1. **alpha.11 及更早的安装需要重装一次。** 那些安装里抄了一份旧的标准模式，在 Harness `0.2.2` 上 VibeGuide 模式很可能打不开；重新运行一键安装命令即可。本机在 2026-11-17 重装为 alpha.12：装好的副本通过了 `smoke-guide-desktop.mjs --installed` 检查，所有者在日常应用里新建 VibeGuide 会话并打开侧栏，确认正常。没有其他用户重装后的反馈。
-2. **Windows 还没有验证通过。** 2026-11-17 所有者在一台真实的 Windows 电脑上试装 alpha.12：不连 VPN 时三条安装命令（GitHub 地址和 `cdn.jsdelivr.net` 镜像）都不成功，具体报错没有拿到；连上 VPN 后安装器报告装好了，但 Harness 里没有 VibeGuide 模式。查到一个确定的缺陷：插件位置被记成 `C:\...` 路径，Harness 当网址解析时会失败，alpha.13 改成了 `file://` 地址。这是否是唯一的原因不确定，因为没有拿到那台电脑上的 Harness 日志；改完后也还没有在 Windows 上重新试过。另外 `package.json` 的 `os` 字段只列了 `darwin` 和 `linux`；安装走脚本而不是 npm，是否有实际影响没有验证。
+2. **Windows 还没有验证通过。** 2026-11-17 所有者在一台真实的 Windows 电脑上试装 alpha.12：不连 VPN 时三条安装命令（GitHub 地址和 `cdn.jsdelivr.net` 镜像）都不成功，具体报错没有拿到；连上 VPN 后安装器报告装好了，但 Harness 里没有 VibeGuide 模式。查到一个确定的缺陷：插件位置被记成 `C:\...` 路径，Harness 当网址解析时会失败，alpha.13 改成了 `file://` 地址。这是否是唯一的原因不确定，因为没有拿到那台电脑上的 Harness 日志；改完后也还没有在 Windows 上重新试过。另外 `package.json` 的 `os` 字段只列了 `darwin` 和 `linux`；安装走脚本而不是 npm，是否有实际影响没有验证。 同一天稍后，所有者用 `fastly.jsdelivr.net` 镜像在不改代码的情况下装上了 alpha.13（安装器报告装好；Harness 里是否出现 VibeGuide 模式还没有回报），但提示文字全部是乱码：jsDelivr 不声明文字编码，Windows 自带的 PowerShell 5.1 把脚本按西欧编码读入。安装脚本末尾已加上检测和还原（同日发布，版本号仍是 alpha.13，因为安装包内容没有变）；这段还原代码本机没有 PowerShell，只做了静态检查，没有实际运行过。
 3. 用户不点“没问题了”，要求会一直停在“可以试用了”。用户事后在主对话提出的不满意会成为一条新要求，不会把旧要求改回“还在做”。
 4. `src/index.ts` 里的规则版本号仍是 `2026-10-21.2`，而 `prompts/core.md` 在 2026-11-02 改过（增加“可以重点看看”）。
 5. 后台留有界面已不直接使用的部分：`history`、`annotate`、`analyze` 三个接口；`submit` 里旧的澄清与转交分支；项目记录里的试用、反馈、范围绑定字段（为读取旧记录保留）。
