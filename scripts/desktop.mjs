@@ -33,10 +33,6 @@ export async function desktopHost(app = DEFAULT_APP) {
 export async function prepareDesktopPlugin(host, directory, options = {}) {
   const presetId = 'vibeguide';
   const packageJson = JSON.parse(await readFile(join(sourceRoot, 'package.json'), 'utf8'));
-  const webRoot = dirname(host.resolve('@deepseek-ai/dsh-web-app/package.json'));
-  const standardText = await readFile(join(webRoot, 'presets', 'standard.patch.yml'), 'utf8');
-  const standard = host.parse(standardText)[0]?.insert?.find(row => row.config?.id === 'standard');
-  if (!standard || !Array.isArray(standard.config.plugins)) throw new Error('桌面版标准预设结构不符合预期，未安装。');
   await mkdir(directory, { recursive: true, mode: 0o700 });
   for (const folder of ['dist', 'prompts']) {
     await cp(join(sourceRoot, folder), join(directory, folder), { recursive: true });
@@ -49,35 +45,18 @@ export async function prepareDesktopPlugin(host, directory, options = {}) {
       '@deepseek-ai/dsh-client-ui-slots', '@deepseek-ai/dsh-connection',
     ] } },
   }, null, 2) + '\n', { mode: 0o600 });
-  // Includes outside the profile do not inherit its package lookup fallback.
-  // Use this desktop's exact modules, including every nested preset row.
-  const hostRows = rows => rows.map(row => ({
-    ...row,
-    name: row.name.startsWith('@deepseek-ai/') ? pathToFileURL(host.resolve(row.name)).href : row.name,
-    ...(row.group === true ? { config: hostRows(row.config) } : {}),
-  }));
-  const preset = {
-    ...standard,
-    id: `preset-${presetId}`,
-    name: pathToFileURL(host.resolve('@deepseek-ai/dsh-agent-preset')).href,
-    config: {
-      ...standard.config,
-      id: presetId, name: 'VibeGuide', order: 2,
-      description: '用易懂的话沟通开发；在 VibeGuide 侧栏按需看懂进展与选择。',
-      plugins: [...hostRows(standard.config.plugins), {
-        id: 'vibeguide-communication',
-        name: pathToFileURL(join(directory, 'dist', 'index.js')).href,
-      }],
-    },
-  };
+  // Nothing from the Harness's standard mode is copied here. The preset plugin reads it from the
+  // running Harness on every start, so a Harness update cannot leave a stale copy behind.
   const composition = host.dump([{
     id: 'vibeguide-guide', name: pathToFileURL(join(directory, 'dist', 'guide', 'plugin.js')).href,
     config: { runtimeAnchor: host.anchor, storageRoot: options.storageRoot ?? join(dirname(directory), 'vibeguide-v2-state') },
-  }, preset]);
+  }, {
+    id: 'vibeguide-preset', name: pathToFileURL(join(directory, 'dist', 'guide', 'host', 'preset.js')).href,
+    config: { runtimeAnchor: host.anchor, communication: pathToFileURL(join(directory, 'dist', 'index.js')).href },
+  }]);
   await writeFile(join(directory, 'preset.cordis.yml'), composition, { mode: 0o600 });
   return {
     version: packageJson.version,
-    preset,
     patch: { insert: [{
       id: `${presetId}-presets`, name: 'cordis:include',
       config: { path: join(directory, 'preset.cordis.yml') },

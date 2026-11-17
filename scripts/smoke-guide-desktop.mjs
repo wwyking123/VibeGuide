@@ -94,7 +94,8 @@ if (!process.versions.electron) {
     assert.ok((await readFile(join(pluginDirectory, 'dist', 'client.js'), 'utf8')).includes('__ModuleLoader__'));
     const declaration = host.parse(await readFile(join(pluginDirectory, 'preset.cordis.yml'), 'utf8'));
     assert.equal(declaration.filter(row => row.id === 'vibeguide-guide').length, 1);
-    assert.equal(declaration.filter(row => row.config?.id === 'vibeguide').length, 1);
+    assert.equal(declaration.filter(row => row.id === 'vibeguide-preset').length, 1);
+    assert.deepEqual(declaration.map(row => row.id), ['vibeguide-guide', 'vibeguide-preset'], 'no copy of the Harness standard mode may be installed');
     const { loadProfileDirectory, loadLayeredEnv } = await host.load('@deepseek-ai/dsh-app-boot');
     const { runProfile } = await host.load('@deepseek-ai/dsh/profile-boot');
     const profile = loadProfileDirectory('vibeguide-guide-smoke', profileDirectory, host.anchor);
@@ -211,6 +212,13 @@ if (!process.versions.electron) {
         },
       }),
     });
+    // Harness 0.2.2 takes a batch of raw calls and returns a batch; earlier builds took one call.
+    // Send both shapes and unwrap, so this script runs against either.
+    const runTool = async call => {
+      const outcome = await root.tools.execute({ ...call,
+        calls: [{ id: call.callId, name: call.name, arguments: JSON.stringify(call.arguments) }] });
+      return Array.isArray(outcome?.results) ? outcome.results[0].result : outcome;
+    };
     const { scopeOf } = await host.load('@deepseek-ai/dsh-scope');
     const handles = [];
     const assemblies = [];
@@ -302,7 +310,7 @@ if (!process.versions.electron) {
       return next();
     }, { global: true });
     try {
-      const result = await root.tools.execute({ name: 'bash',
+      const result = await runTool({ name: 'bash',
         arguments: { command: 'test -f native-check-baseline.json && test "$(cat check-input.txt)" = before', description: 'Verify isolated pre-execution baseline' },
         callId: 'guide-native-baseline', agent: guideAgent,
         signal: AbortSignal.timeout(5000) });
@@ -445,12 +453,12 @@ if (!process.versions.electron) {
       }
       throw new Error('P1 progress did not reach the expected state');
     };
-    await root.tools.execute({ name: 'bash', arguments: { command: 'printf after > app.txt', description: 'Write an isolated test fixture' },
+    await runTool({ name: 'bash', arguments: { command: 'printf after > app.txt', description: 'Write an isolated test fixture' },
       callId: 'p1-write', agent: guideAgent, signal: AbortSignal.timeout(5000) });
     const changed = await pollProgress(value => value.progress.changedFiles > 0);
     assert.equal(changed.progress.activity, 'idle');
     await writeFile(join(projectDirectory, 'verify.test.mjs'), 'import {readFileSync} from "node:fs"; import assert from "node:assert/strict"; await new Promise(r=>setTimeout(r,800)); assert.equal(readFileSync("app.txt","utf8"),"after");');
-    const runningCheck = root.tools.execute({ name: 'bash', arguments: { command: 'node --test verify.test.mjs', description: 'Check the isolated fixture' },
+    const runningCheck = runTool({ name: 'bash', arguments: { command: 'node --test verify.test.mjs', description: 'Check the isolated fixture' },
       callId: 'p1-check', agent: guideAgent, signal: AbortSignal.timeout(10000) });
     await pollProgress(value => value.progress.activity === 'checking');
     const successfulCheck = await runningCheck;
@@ -459,16 +467,26 @@ if (!process.versions.electron) {
     assert.equal(checked.progress.latestCheck.applicability, 'unchanged');
     await writeFile(join(projectDirectory, 'app.txt'), 'later edit');
     await pollProgress(value => value.progress.latestCheck?.applicability === 'changed');
-    await root.tools.execute({ name: 'bash', arguments: { command: 'node --test verify.test.mjs', description: 'Check a changed fixture' },
+    await runTool({ name: 'bash', arguments: { command: 'node --test verify.test.mjs', description: 'Check a changed fixture' },
       callId: 'p1-failed-check', agent: guideAgent, signal: AbortSignal.timeout(10000) });
     await pollProgress(value => value.progress.latestCheck?.id === 'p1-failed-check' && value.progress.latestCheck.outcome === 'failed');
-    const restorePresentation = guideAgent.ctx.tools.presentAs('ptc');
-    const nested = await root.tools.execute({ name: 'run_code', arguments: {
-      code: 'await tools.bash({ command: "node --test verify.test.mjs", description: "Run the failing fixture inside PTC" }); console.log("outer program completed");',
-      description: 'Verify nested check receipts' }, callId: 'p1-nested-check', agent: guideAgent, signal: AbortSignal.timeout(10000) });
-    assert.equal(nested.isError, false, `outer program completes even though the child command exits nonzero: ${JSON.stringify(nested.error)}`);
-    await pollProgress(value => value.progress.latestCheck?.id === 'p1-nested-check:ptc:1' && value.progress.latestCheck.outcome === 'failed');
-    await restorePresentation();
+    // Programs that call tools from inside run_code: earlier Harness builds let any agent switch to it;
+    // 0.2.2 moved it into a separate mode that VibeGuide's standard-based mode does not include.
+    const nestedCheck = typeof guideAgent.ctx.tools.presentAs === 'function';
+    if (nestedCheck) {
+      const restorePresentation = guideAgent.ctx.tools.presentAs('ptc');
+      const nested = await runTool({ name: 'run_code', arguments: {
+        code: 'await tools.bash({ command: "node --test verify.test.mjs", description: "Run the failing fixture inside PTC" }); console.log("outer program completed");',
+        description: 'Verify nested check receipts' }, callId: 'p1-nested-check', agent: guideAgent, signal: AbortSignal.timeout(10000) });
+      assert.equal(nested.isError, false, `outer program completes even though the child command exits nonzero: ${JSON.stringify(nested.error)}`);
+      await pollProgress(value => value.progress.latestCheck?.id === 'p1-nested-check:ptc:1' && value.progress.latestCheck.outcome === 'failed');
+      await restorePresentation();
+    } else {
+      // Later steps expect the same check to have failed twice in this conversation.
+      await runTool({ name: 'bash', arguments: { command: 'node --test verify.test.mjs', description: 'Check the changed fixture again' },
+        callId: 'p1-failed-check-again', agent: guideAgent, signal: AbortSignal.timeout(10000) });
+      await pollProgress(value => value.progress.latestCheck?.id === 'p1-failed-check-again' && value.progress.latestCheck.outcome === 'failed');
+    }
     assert.equal(modelCalls, p1ModelCalls, 'progress, checks and invalidation must not call the model');
     // P5: actual native failed receipts, owner-gated settings, local lookup, budgets and history.
     const p5Session = (await root.sessionController.create({ workspaceId: workspace.id, agentPreset: 'vibeguide' })).sessionId;
@@ -516,7 +534,7 @@ if (!process.versions.electron) {
       requestIdReconciled: true, originalModificationPreserved: true, nativePreExecutionBaseline: true,
       baselineMs: Math.round(baselineMs * 100) / 100,
       independentExplanationWhileMainWaits: true,
-      nativeProgress: true, changesCaptured: true, realCheckFailurePreserved: true, nestedCheckFailurePreserved: true, fileChangeInvalidatesCheck: true,
+      nativeProgress: true, changesCaptured: true, realCheckFailurePreserved: true, nestedCheckFailurePreserved: nestedCheck ? true : 'not available in this Harness', fileChangeInvalidatesCheck: true,
       progressModelCalls: 0, explanationsPersisted: true,
       publicInputRouting: true, originalAnswerRedirectOnly: true, publicBusyDelivery: true, publicIdleDelivery: true,
       duplicateSubmissionOneMessage: true,

@@ -7,7 +7,7 @@ DeepSeek Harness 的插件，面向不懂技术、用 AI 做产品的人：
 - **白话沟通规则**：让主对话里的开发 AI 直接说清楚准备做什么、需要你决定什么、实际做到了什么。
 - **VibeGuide 侧栏**：随时问看不懂的地方，看项目做到哪一步；有具体改法时一键发到主对话。
 
-当前版本 **0.2.0-alpha.11，开发验证版**。适用于 macOS 桌面版 Harness `0.2.1-rc.2` / `0.2.1-rc.3`；同一 0.2.x 线上更新的 Harness 也能加载，设置页会提示“还没一起测试过”。还没有做过真人试用。
+当前版本 **0.2.0-alpha.12，开发验证版**。适用于 macOS 桌面版 Harness，已在 `0.2.2-rc.3` 上走过完整流程。Harness 自动更新后不需要重装：VibeGuide 模式每次启动都按当前 Harness 的标准模式生成；还没一起测试过的新版本照常加载，设置页会提示一句。还没有做过真人试用。
 
 ## 侧栏怎么用
 
@@ -55,7 +55,8 @@ irm https://raw.githubusercontent.com/wwyking123/VibeGuide/release/install.ps1 |
 - **停用**：新会话选「标准模式」。
 - **移除**：关闭 Harness，从 `cordis.patch.yml` 删掉 `id: vibeguide-presets` 那一项，再移走它引用的插件目录。
 - **记录**：侧栏记录保存在 `~/.dsh/vibeguide-p0-state/`（沿用旧路径），停用不会删除。
-- **Harness 换到 0.2 以外的版本**：侧栏会停用并提示更新 VibeGuide，主对话不受影响。
+- **Harness 更新之后**：不需要重装。如果某次更新改动了侧栏用到的内部接口，侧栏可能出错并提示更新 VibeGuide，主对话不受影响；这时重新运行上面的安装命令。
+- **0.2.0-alpha.11 及更早的版本**：需要重新运行一次安装命令。旧版把 Harness 的标准模式抄了一份，Harness 更新到 0.2.2 后 VibeGuide 模式会打不开。
 
 ## 开发与检查
 

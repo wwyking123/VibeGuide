@@ -1,5 +1,5 @@
 /** Exact desktop releases exercised by the integration suite. Shared with the installer. */
-export const SUPPORTED_DESKTOP_VERSIONS: readonly string[] = Object.freeze(['0.2.1-rc.2', '0.2.1-rc.3']);
+export const SUPPORTED_DESKTOP_VERSIONS: readonly string[] = Object.freeze(['0.2.1-rc.2', '0.2.1-rc.3', '0.2.2-rc.3']);
 
 const parse = (version: string) => {
   const match = /^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?$/.exec(version);
@@ -20,14 +20,17 @@ function compare(a: NonNullable<ReturnType<typeof parse>>, b: NonNullable<Return
 }
 
 /**
- * Later builds of the same minor line usually keep the APIs we use, so they load as `untested` instead of
- * leaving the sidebar dead after an automatic Harness update. Older or other-line releases still refuse.
+ * Harness updates itself, so anything other than a release older than the first one we worked with
+ * loads and is tried. Releases we have not run the integration suite on report as `untested`, which
+ * the settings page mentions in one line. Refusing them would only guarantee a dead sidebar.
  */
 export function desktopCompatibility(version: string): 'verified' | 'untested' {
   if (SUPPORTED_DESKTOP_VERSIONS.includes(version)) return 'verified';
-  const current = parse(version), oldest = parse(SUPPORTED_DESKTOP_VERSIONS[0]!), newest = parse(SUPPORTED_DESKTOP_VERSIONS.at(-1)!);
-  if (current && oldest && newest && current.core[0] === newest.core[0] && current.core[1] === newest.core[1] && compare(current, oldest) > 0) return 'untested';
-  throw new Error(`当前 Harness ${version} 与这个 VibeGuide 不兼容，请更新 VibeGuide。已验证版本：${SUPPORTED_DESKTOP_VERSIONS.join('、')}。`);
+  const current = parse(version), oldest = parse(SUPPORTED_DESKTOP_VERSIONS[0]!);
+  if (current && oldest && compare(current, oldest) < 0) {
+    throw new Error(`当前 Harness ${version} 比这个 VibeGuide 支持的最早版本 ${SUPPORTED_DESKTOP_VERSIONS[0]} 还旧，请先更新 Harness。`);
+  }
+  return 'untested';
 }
 
 export function assertDesktopVersion(version: string): void { desktopCompatibility(version); }
