@@ -180,4 +180,11 @@ function Install-VibeGuide {
   }
 }
 
-Install-VibeGuide
+# jsDelivr 镜像不声明文字编码。Windows 自带的 PowerShell 5.1 这时会把下载到的脚本按西欧编码读入，
+# 中文全部显示成乱码。这种读法一个字节也不丢，所以检测到之后把函数正文按 UTF-8 还原，再运行还原后的版本。
+if ('中'.Length -eq 1) { Install-VibeGuide }
+else {
+  $body = ${function:Install-VibeGuide}.ToString()
+  if ($body -match '[^\u0000-\u00ff]') { Install-VibeGuide }
+  else { & ([scriptblock]::Create([Text.Encoding]::UTF8.GetString([Text.Encoding]::GetEncoding(28591).GetBytes($body)))) }
+}
