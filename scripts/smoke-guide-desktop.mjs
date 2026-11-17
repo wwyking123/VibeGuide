@@ -59,7 +59,7 @@ if (!process.versions.electron) {
           [key, key === 'storageRoot' ? join(temporary, 'isolated-state') : rebase(field)])) : value;
       await writeFile(join(pluginDirectory, 'preset.cordis.yml'), host.dump(rebase(host.parse(installedPresetBefore))));
       await writeFile(patchPath, host.dump([...originalRows, { insert: [{
-        id: 'vibeguide-presets', name: 'cordis:include', config: { path: join(pluginDirectory, 'preset.cordis.yml') },
+        id: 'vibeguide-presets', name: 'cordis:include', config: { path: pathToFileURL(join(pluginDirectory, 'preset.cordis.yml')).href },
       }] }]));
     } else {
       // Exercise the actual CLI upgrade, including custom legacy storage and backups.

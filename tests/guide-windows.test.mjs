@@ -2,7 +2,11 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import { pathParts } from '../dist/guide/store.js';
-import { appLayout } from '../scripts/desktop.mjs';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { appLayout, prepareDesktopPlugin } from '../scripts/desktop.mjs';
 import { selfTest } from '../scripts/selftest.mjs';
 
 test('storage folders are split by the system separator, so a Windows path is not one giant folder name', () => {
@@ -16,6 +20,20 @@ test('the installer finds the app files in a macOS bundle and in a Windows folde
   const windows = appLayout('C:/Programs/DeepSeek Harness', true);
   assert.match(windows.executable, /DeepSeek Harness\.exe$/);
   assert.match(windows.resources, /resources$/);
+});
+
+test('the plugin location is recorded as a file URL, which the Harness can also resolve on Windows', async () => {
+  const directory = join(await mkdtemp(join(tmpdir(), 'vibeguide-prepare-')), 'plugin');
+  try {
+    const prepared = await prepareDesktopPlugin({ anchor: '/harness/package.json', dump: JSON.stringify }, directory);
+    const recorded = prepared.patch.insert[0].config.path;
+    assert.equal(fileURLToPath(recorded), join(directory, 'preset.cordis.yml'));
+    // The Harness resolves the recorded value against the profile folder's URL, exactly like this.
+    const profile = 'file:///C:/Users/li/.dsh/profiles/desktop/';
+    assert.equal(new URL(pathToFileURL(join(directory, 'preset.cordis.yml')).href, profile).protocol, 'file:');
+    assert.equal(new URL('file:///C:/Users/li/.dsh/plugins/vibeguide/preset.cordis.yml', profile).protocol, 'file:');
+    assert.equal(new URL('C:\\Users\\li\\.dsh\\plugins\\vibeguide\\preset.cordis.yml', profile).protocol, 'c:', 'a plain Windows path is not a file location to the Harness');
+  } finally { await rm(join(directory, '..'), { recursive: true, force: true }); }
 });
 
 test('the pre-install self-test passes on this machine and leaves nothing behind', async () => {

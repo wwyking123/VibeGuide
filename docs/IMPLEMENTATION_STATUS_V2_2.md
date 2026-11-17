@@ -1,17 +1,17 @@
 # VibeGuide v2.2 开发状态
 
-更新：2026-11-17，版本 `0.2.0-alpha.12`。本文件描述实际代码和已有的验证，不描述目标；[产品设计 v2.2](VIBEGUIDE_PRODUCT_V2_2.md) 和 [技术设计 v2.2](VIBEGUIDE_TECHNICAL_DESIGN_V2_2.md) 仍描述最终目标，与后来的决定冲突时以 [reviews/](reviews/) 里的记录为准。
+更新：2026-11-17，版本 `0.2.0-alpha.13`。本文件描述实际代码和已有的验证，不描述目标；[产品设计 v2.2](VIBEGUIDE_PRODUCT_V2_2.md) 和 [技术设计 v2.2](VIBEGUIDE_TECHNICAL_DESIGN_V2_2.md) 仍描述最终目标，与后来的决定冲突时以 [reviews/](reviews/) 里的记录为准。
 
 alpha.7 及之前各批的交付和验证记录原样保留在文末“历史记录”里。那部分描述的试用步骤、范围核对、“了解过的”页、结构关系图等已经删除或改掉，不代表现在的行为。
 
 ## 现在的状态
 
-- 单元测试 **118 项全部通过**（2026-11-17，`npm test`）。
+- 单元测试 **119 项全部通过**（2026-11-17，`npm test`）。
 - `npm run smoke:guide` 在本机现在的 Harness `0.2.2-rc.3` 上**通过**（2026-11-17）。alpha.11 在这个版本上是失败的，alpha.12 改掉了原因，见“跟随 Harness 更新”。
-- Windows 安装脚本已写好，没有在真实的 Windows 电脑上运行过。
+- Windows：alpha.12 在一台真实的 Windows 电脑上装完后没有出现 VibeGuide 模式（2026-11-17，所有者报告）。alpha.13 修了查到的原因，修完后还没有在 Windows 上重新试过。
 - 真实模型评测只在 2026-11-03 做过一次，之后新增的划词提问不在其中。
 - 还没有做过真人试用。
-- alpha.12 在 2026-11-17 发布到 `release` 分支（一键安装的来源）。本机日常使用的 Harness `0.2.2-rc.3` 已装上 alpha.12，所有者确认正常。
+- alpha.12 和 alpha.13 都在 2026-11-17 发布到 `release` 分支（一键安装的来源）。本机日常使用的 Harness `0.2.2-rc.3` 装的是 alpha.12，所有者确认正常。
 
 ## 当前能力
 
@@ -61,7 +61,9 @@ alpha.11 及之前有两处会让插件在 Harness 更新后失效，alpha.12 �
 ## 安装与发布
 
 - macOS：[install.sh](../install.sh) 下载预先构建的包，用 Harness 自带的运行环境执行安装器，不需要 Node 或 git；GitHub 下载不动时换 jsDelivr 镜像。
-- Windows：[install.ps1](../install.ps1) 有只读的环境检查模式（`VIBEGUIDE_CHECK=1`）。脚本是对照 Harness 源码写的，只做过静态检查。
+- Windows：[install.ps1](../install.ps1) 有只读的环境检查模式（`VIBEGUIDE_CHECK=1`）。脚本是对照 Harness 源码写的。实际运行情况见“已知问题”第 2 条。
+- 插件位置在 Harness 设置里记成 `file://` 地址而不是普通路径（alpha.13 起）。Harness 把这个值当网址解析，`C:\...` 这样的 Windows 路径会被读成协议为 `c:` 的网址而加载失败。
+- 两个安装脚本依次尝试 GitHub 和四个 jsDelivr 镜像（`cdn`、`fastly`、`gcore`、`testingcf`）下载安装包。
 - 安装器在改动任何 Harness 设置之前先自检：在临时文件夹里试存、试读记录和项目文件，不通过就停止。之后把插件放进 `~/.dsh/plugins/`（只有插件自己的文件和两行声明，不含 Harness 的内容），在 `profiles/desktop/cordis.patch.yml` 增加一项声明，原文件备份到 `~/.dsh/.vibeguide-backups/`。
 - 发布：`sh scripts/release.sh` 先跑 `npm test`，再把构建好的包、`install.sh`、`install.ps1` 提交到本地 `release` 分支；`git push origin release` 之后一键安装才拿到新版本。发布脚本不跑 smoke 测试。
 
@@ -89,10 +91,11 @@ alpha.11 及之前有两处会让插件在 Harness 更新后失效，alpha.12 �
 
 | 时间 | 内容 | 结果 |
 |---|---|---|
-| 2026-11-17 | `npm test`，macOS，Node 24.15.0 | 118 项通过。数量比 alpha.7 的 144 项少，是因为 alpha.8 删除旧版“项目续接”和六项开发能力时一并删了它们的测试。 |
+| 2026-11-17 | `npm test`，macOS，Node 24.15.0 | 119 项通过。数量比 alpha.7 的 144 项少，是因为 alpha.8 删除旧版“项目续接”和六项开发能力时一并删了它们的测试。 |
 | 2026-11-17 | `npm run smoke:guide`，alpha.12，本机 Harness `0.2.2-rc.3` | 通过：安装与升级、模式挂载、工具与标准模式一致、讲解与缓存、发送与去重、进展与检查、要求确认、排障、设置与次数上限、卸载与重载。“程序内嵌调用里的检查失败”一项跳过，因为 0.2.2 把这种调用方式挪到了另一个模式里，VibeGuide 模式不包含它。 |
 | 2026-11-17 | `npm run smoke:guide`，alpha.11，本机 Harness `0.2.2-rc.3` | 失败：挂载 VibeGuide 模式时报 `agent-preset/invalid`。原因见“跟随 Harness 更新”。 |
-| 2026-11-12 | Windows 支持（alpha.11） | 4 项单元测试覆盖路径拆分和应用目录结构；没有在 Windows 上运行过。 |
+| 2026-11-12 | Windows 支持（alpha.11） | 单元测试覆盖路径拆分和应用目录结构；当时没有在 Windows 上运行过。 |
+| 2026-11-17 | alpha.12，一台真实的 Windows 电脑（所有者试装） | 安装器报告装好，但没有 VibeGuide 模式。见“已知问题”第 2 条。 |
 | 2026-11-03 | [真实模型评测](reviews/2026-11-03-sidebar-model-eval.md)，`deepseek-flash` | 讲解 8/8、代写 6/6、概览 2/2。用例少，只有中文和单一模型，之后没有重跑。 |
 | 2026-11-02 | 一键代发改版后，Harness `0.2.1-rc.3` | 当时 `npm test` 142 项通过，`smoke:guide` 通过，369 px 侧栏实测点击发送并核对回执。见[决定记录](reviews/2026-11-02-sidebar-simplification.md)。 |
 
@@ -103,7 +106,7 @@ alpha.8 到 alpha.11 之间，仓库里没有 `smoke:guide` 的结果记录。�
 ## 已知问题
 
 1. **alpha.11 及更早的安装需要重装一次。** 那些安装里抄了一份旧的标准模式，在 Harness `0.2.2` 上 VibeGuide 模式很可能打不开；重新运行一键安装命令即可。本机在 2026-11-17 重装为 alpha.12：装好的副本通过了 `smoke-guide-desktop.mjs --installed` 检查，所有者在日常应用里新建 VibeGuide 会话并打开侧栏，确认正常。没有其他用户重装后的反馈。
-2. **Windows 没有验证。** 另外 `package.json` 的 `os` 字段只列了 `darwin` 和 `linux`；安装走脚本而不是 npm，是否有实际影响没有验证。
+2. **Windows 还没有验证通过。** 2026-11-17 所有者在一台真实的 Windows 电脑上试装 alpha.12：不连 VPN 时三条安装命令（GitHub 地址和 `cdn.jsdelivr.net` 镜像）都不成功，具体报错没有拿到；连上 VPN 后安装器报告装好了，但 Harness 里没有 VibeGuide 模式。查到一个确定的缺陷：插件位置被记成 `C:\...` 路径，Harness 当网址解析时会失败，alpha.13 改成了 `file://` 地址。这是否是唯一的原因不确定，因为没有拿到那台电脑上的 Harness 日志；改完后也还没有在 Windows 上重新试过。另外 `package.json` 的 `os` 字段只列了 `darwin` 和 `linux`；安装走脚本而不是 npm，是否有实际影响没有验证。
 3. 用户不点“没问题了”，要求会一直停在“可以试用了”。用户事后在主对话提出的不满意会成为一条新要求，不会把旧要求改回“还在做”。
 4. `src/index.ts` 里的规则版本号仍是 `2026-10-21.2`，而 `prompts/core.md` 在 2026-11-02 改过（增加“可以重点看看”）。
 5. 后台留有界面已不直接使用的部分：`history`、`annotate`、`analyze` 三个接口；`submit` 里旧的澄清与转交分支；项目记录里的试用、反馈、范围绑定字段（为读取旧记录保留）。

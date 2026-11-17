@@ -7,7 +7,7 @@ DeepSeek Harness 的插件，面向不懂技术、用 AI 做产品的人：
 - **白话沟通规则**：让主对话里的开发 AI 直接说清楚准备做什么、需要你决定什么、实际做到了什么。
 - **VibeGuide 侧栏**：随时问看不懂的地方，看项目做到哪一步；有具体改法时一键发到主对话。
 
-当前版本 **0.2.0-alpha.12，开发验证版**。适用于 macOS 桌面版 Harness，已在 `0.2.2-rc.3` 上走过完整流程。Harness 自动更新后不需要重装：VibeGuide 模式每次启动都按当前 Harness 的标准模式生成；还没一起测试过的新版本照常加载，设置页会提示一句。还没有做过真人试用。
+当前版本 **0.2.0-alpha.13，开发验证版**。适用于 macOS 桌面版 Harness，已在 `0.2.2-rc.3` 上走过完整流程。Harness 自动更新后不需要重装：VibeGuide 模式每次启动都按当前 Harness 的标准模式生成；还没一起测试过的新版本照常加载，设置页会提示一句。还没有做过真人试用。
 
 ## 侧栏怎么用
 
@@ -40,7 +40,7 @@ curl -fsSL https://cdn.jsdelivr.net/gh/wwyking123/VibeGuide@release/install.sh |
 
 ### Windows（测试中）
 
-Windows 版的安装命令已经写好，但**还没有在真实的 Windows 电脑上验证过**。愿意帮忙测试的话，打开 PowerShell，先运行只读的环境检查，把输出发给作者：
+Windows 版**还没有验证通过**。0.2.0-alpha.12 在一台真实的 Windows 电脑上装完后没有出现 VibeGuide 模式，原因是安装器记录插件位置的写法 Harness 在 Windows 上读不了；0.2.0-alpha.13 改了这一处，改完后还没有在 Windows 上重新试过。愿意帮忙测试的话，打开 PowerShell，先运行只读的环境检查，把输出发给作者：
 
 ```powershell
 $env:VIBEGUIDE_CHECK = '1'; irm https://raw.githubusercontent.com/wwyking123/VibeGuide/release/install.ps1 | iex
@@ -50,6 +50,20 @@ $env:VIBEGUIDE_CHECK = '1'; irm https://raw.githubusercontent.com/wwyking123/Vib
 
 ```powershell
 irm https://raw.githubusercontent.com/wwyking123/VibeGuide/release/install.ps1 | iex
+```
+
+连不上 GitHub 时，把上面两条命令里的地址换成下面任意一个镜像（能连上哪个因网络而异）：
+
+```powershell
+irm https://fastly.jsdelivr.net/gh/wwyking123/VibeGuide@release/install.ps1 | iex
+```
+
+```powershell
+irm https://gcore.jsdelivr.net/gh/wwyking123/VibeGuide@release/install.ps1 | iex
+```
+
+```powershell
+irm https://testingcf.jsdelivr.net/gh/wwyking123/VibeGuide@release/install.ps1 | iex
 ```
 
 - **停用**：新会话选「标准模式」。

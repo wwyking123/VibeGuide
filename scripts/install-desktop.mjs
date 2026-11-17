@@ -4,6 +4,9 @@ import { createHash, randomUUID } from 'node:crypto';
 import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+/** Installs before 0.2.0-alpha.13 recorded a plain path; later ones record a file URL. */
+const declaredFile = path => path.startsWith('file:') ? fileURLToPath(path) : path;
 import { parseArgs } from 'node:util';
 import { DEFAULT_APP, appLayout, composeDesktopPatch, desktopHost, prepareDesktopPlugin } from './desktop.mjs';
 import { selfTest } from './selftest.mjs';
@@ -46,7 +49,7 @@ if (values.help) {
   catch (error) { throw new Error(`自检没有通过：${error instanceof Error ? error.message : error}`); }
   let storageRoot = join(home, 'vibeguide-p0-state');
   const previousStorage = async declaration => {
-    const rows = host.parse(await readFile(declaration.config.path, 'utf8'));
+    const rows = host.parse(await readFile(declaredFile(declaration.config.path), 'utf8'));
     const preset = rows.find(row => ['vibeguide', 'vibeguide-p0'].includes(row.config?.id))?.config;
     return preset?.plugins?.find(row => row.id === 'vibeguide-continuity')?.config?.storageRoot
       ?? rows.find(row => row.id === 'vibeguide-guide')?.config?.storageRoot;

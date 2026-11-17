@@ -59,7 +59,9 @@ export async function prepareDesktopPlugin(host, directory, options = {}) {
     version: packageJson.version,
     patch: { insert: [{
       id: `${presetId}-presets`, name: 'cordis:include',
-      config: { path: join(directory, 'preset.cordis.yml') },
+      // A file URL, not a plain path: the Harness resolves this as a URL, and a Windows path such as
+      // C:\\Users\\... would be read as a URL with the scheme "c:" and fail to load.
+      config: { path: pathToFileURL(join(directory, 'preset.cordis.yml')).href },
     }] },
   };
 }

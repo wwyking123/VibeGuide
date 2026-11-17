@@ -23,7 +23,9 @@ downloaded=""
 for url in ${VIBEGUIDE_PACKAGE:-} \
   "https://raw.githubusercontent.com/$REPO/release/vibeguide.tgz" \
   "https://cdn.jsdelivr.net/gh/$REPO@release/vibeguide.tgz" \
-  "https://fastly.jsdelivr.net/gh/$REPO@release/vibeguide.tgz"; do
+  "https://fastly.jsdelivr.net/gh/$REPO@release/vibeguide.tgz" \
+  "https://gcore.jsdelivr.net/gh/$REPO@release/vibeguide.tgz" \
+  "https://testingcf.jsdelivr.net/gh/$REPO@release/vibeguide.tgz"; do
   rm -rf "$TMP/vibeguide"
   if curl -fsSL --connect-timeout 8 --max-time 120 "$url" -o "$TMP/vibeguide.tgz" 2>/dev/null \
     && tar -xzf "$TMP/vibeguide.tgz" -C "$TMP" 2>/dev/null \

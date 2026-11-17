@@ -13,7 +13,9 @@ function Install-VibeGuide {
   $sources = @(
     "https://raw.githubusercontent.com/$repo/release",
     "https://cdn.jsdelivr.net/gh/${repo}@release",
-    "https://fastly.jsdelivr.net/gh/${repo}@release"
+    "https://fastly.jsdelivr.net/gh/${repo}@release",
+    "https://gcore.jsdelivr.net/gh/${repo}@release",
+    "https://testingcf.jsdelivr.net/gh/${repo}@release"
   )
 
   function Fail($message) {
@@ -140,7 +142,7 @@ function Install-VibeGuide {
     foreach ($package in $packages) {
       try {
         if (Test-Path -LiteralPath $package) { Copy-Item -LiteralPath $package -Destination $tgz -Force }
-        else { Invoke-WebRequest -UseBasicParsing -Uri $package -OutFile $tgz -TimeoutSec 120 }
+        else { Invoke-WebRequest -UseBasicParsing -Uri $package -OutFile $tgz -TimeoutSec 40 }
         $extracted = Join-Path $tmp 'vibeguide'
         if (Test-Path -LiteralPath $extracted) { Remove-Item -LiteralPath $extracted -Recurse -Force }
         & $tar.Path -xzf $tgz -C $tmp
