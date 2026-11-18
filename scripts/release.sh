@@ -1,6 +1,8 @@
 #!/bin/sh
 # Packs the built plugin and commits it, with install.sh and install.ps1, to the local `release` branch.
 # Both installers download vibeguide.tgz from that branch. Pushing is a separate, deliberate step.
+# Also packs the Harness bundle (what `dsh plugin add` and the plugin market install) into artifacts/,
+# to be attached to a GitHub Release by hand.
 set -eu
 cd "$(dirname "$0")/.."
 
@@ -26,4 +28,10 @@ git -C "$work/branch" add -A
 if git -C "$work/branch" diff --cached --quiet; then echo "release 分支已经是 $version（$source），没有变化。"
 else git -C "$work/branch" commit --quiet -m "release: $version ($source)"; echo "已提交到本地 release 分支：$version（$source）"
 fi
+mkdir -p artifacts
+packed=$(npm pack --ignore-scripts --pack-destination "$work" | tail -1)
+mv "$work/$packed" artifacts/vibeguide-dsh-bundle.tgz
 echo "发布：git push origin release"
+echo "插件市场用的安装包：artifacts/vibeguide-dsh-bundle.tgz（文件名不带版本号，供 releases/latest/download 使用）"
+echo "上传：gh release create v$version artifacts/vibeguide-dsh-bundle.tgz --title v$version --notes \"VibeGuide $version\""
+

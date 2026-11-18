@@ -38,6 +38,10 @@ if (values.help) {
   if (!profileManifest.dsh?.profile?.bundles?.includes('@deepseek-ai/dsh-web-app')) {
     throw new Error('目标目录不是包含 Web 会话能力的桌面版 profile。');
   }
+  // Both installs declare the same plugin rows and the same mode; the Harness would load neither cleanly.
+  if (profileManifest.dsh.profile.bundles.includes('vibeguide')) {
+    throw new Error('VibeGuide 已经通过 Harness 的插件页安装，不需要再运行这条命令；更新请在插件页进行。如果想改用这条命令安装，先在插件页移除 VibeGuide。');
+  }
   const patchPath = join(profile, 'cordis.patch.yml');
   const before = await readFile(patchPath);
   const previous = host.parse(before.toString('utf8'));

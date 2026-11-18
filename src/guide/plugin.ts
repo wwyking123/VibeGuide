@@ -1,6 +1,7 @@
 import { createRequire } from 'node:module';
-import { isAbsolute } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { homedir } from 'node:os';
+import { isAbsolute, join } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { readFile } from 'node:fs/promises';
 import { GuideService } from './service.js';
 import { HarnessAdapter } from './host/adapter.js';
@@ -11,13 +12,26 @@ import { ProgressTracker } from './progress.js';
 
 export const name = 'vibeguide-guide';
 export const inject = ['sessionQuery', 'sessionController', 'llm', 'agentDefaultModel', 'typertGateway', 'agents', 'tools'];
-type Config = { runtimeAnchor: string; storageRoot: string };
+type Config = { runtimeAnchor?: string; storageRoot?: string };
 
-/** Host-side service. Resolve runtime identities from this exact Harness install. */
-export async function apply(ctx: any, config: Config) {
-  if (!config || !isAbsolute(config.runtimeAnchor ?? '')) throw new Error('VibeGuide requires the installer-owned Harness runtime anchor.');
-  if (!isAbsolute(config.storageRoot ?? '')) throw new Error('VibeGuide requires an absolute private storage root.');
-  const require = createRequire(config.runtimeAnchor);
+/**
+ * Where records live when nothing says otherwise: the folder the one-line installer has always used,
+ * so installing through the plugin manager keeps the records of an earlier install.
+ */
+export const defaultStorageRoot = (env: NodeJS.ProcessEnv = process.env, home = homedir()) =>
+  join(env.DSH_HOME?.trim() ? env.DSH_HOME.trim() : join(home, '.dsh'), 'vibeguide-p0-state');
+
+/**
+ * Host-side service. Both settings are optional. Installed as a Harness bundle, the Harness itself
+ * resolves its packages for code under the profile, so this file is anchor enough. The one-line
+ * installer puts the plugin outside the profile, where that does not apply, and passes an anchor.
+ */
+export async function apply(ctx: any, config: Config = {}) {
+  config ??= {};
+  if (config.runtimeAnchor !== undefined && !isAbsolute(config.runtimeAnchor)) throw new Error('VibeGuide: runtimeAnchor must be an absolute path.');
+  const storageRoot = config.storageRoot ?? defaultStorageRoot();
+  if (!isAbsolute(storageRoot)) throw new Error('VibeGuide requires an absolute private storage root.');
+  const require = createRequire(config.runtimeAnchor ?? fileURLToPath(import.meta.url));
   const hostPackage = JSON.parse(await readFile(require.resolve('@deepseek-ai/dsh/package.json'), 'utf8'));
   const untestedHost = desktopCompatibility(hostPackage.version) === 'untested' ? String(hostPackage.version) : undefined;
   const load = (name: string) => import(pathToFileURL(require.resolve(name)).href);
@@ -26,7 +40,7 @@ export async function apply(ctx: any, config: Config) {
   ]);
   let storageError: unknown;
   let tracker: ProgressTracker | undefined;
-  try { tracker = new ProgressTracker(await GuideStore.open(config.storageRoot)); }
+  try { tracker = new ProgressTracker(await GuideStore.open(storageRoot)); }
   catch (e) { storageError = e; }
   const adapter = new HarnessAdapter(ctx, llm, tracker, untestedHost);
   const service = new GuideService(adapter);

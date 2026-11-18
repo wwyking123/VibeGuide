@@ -1,0 +1,9 @@
+# VibeGuide as a Harness bundle: what `dsh plugin add` and the plugin market install.
+# Nothing here names a path on this computer or a Harness version.
+- insert:
+    # The sidebar's host service. The sidebar UI ships with it (package.json "dsh.client").
+    - id: vibeguide-guide
+      name: vibeguide
+    # Registers VibeGuide mode on every start: the running Harness's standard mode plus the communication rules.
+    - id: vibeguide-preset
+      name: vibeguide/preset

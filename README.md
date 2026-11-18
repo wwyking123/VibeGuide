@@ -7,7 +7,7 @@ DeepSeek Harness 的插件，面向不懂技术、用 AI 做产品的人：
 - **白话沟通规则**：让主对话里的开发 AI 直接说清楚准备做什么、需要你决定什么、实际做到了什么。
 - **VibeGuide 侧栏**：随时问看不懂的地方，看项目做到哪一步；有具体改法时一键发到主对话。
 
-当前版本 **0.2.0-alpha.13，开发验证版**。适用于 macOS 桌面版 Harness，已在 `0.2.2-rc.3` 上走过完整流程。Harness 自动更新后不需要重装：VibeGuide 模式每次启动都按当前 Harness 的标准模式生成；还没一起测试过的新版本照常加载，设置页会提示一句。还没有做过真人试用。
+当前版本 **0.2.0-alpha.14，开发验证版**。适用于 macOS 桌面版 Harness，已在 `0.2.2-rc.3` 上走过完整流程。Harness 自动更新后不需要重装：VibeGuide 模式每次启动都按当前 Harness 的标准模式生成；还没一起测试过的新版本照常加载，设置页会提示一句。还没有做过真人试用。
 
 ## 侧栏怎么用
 
@@ -21,6 +21,20 @@ DeepSeek Harness 的插件，面向不懂技术、用 AI 做产品的人：
 打开、刷新和切页不调用模型。提问、生成概览和一键代发才会调用当前会话选的模型，计入次数上限。产品决定见[侧栏精简与转交方式](docs/reviews/2026-11-02-sidebar-simplification.md)。
 
 ## 安装与更新
+
+有两种装法，**只用其中一种**。两种都装会重复声明同一个模式，哪个都加载不好。
+
+### 通过 Harness 的插件页（准备中）
+
+0.2.0-alpha.14 起，VibeGuide 是一个标准的 Harness 组合包，可以由 Harness 自己安装和更新，Mac 和 Windows 相同，也不需要能连上 GitHub 的脚本。安装包会挂在 GitHub Release 上，并提交到 [awesome-dsh-plugin](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin) 供插件市场收录；这两步完成之前，这种装法还用不了。命令行等价于：
+
+```sh
+dsh plugin --profile desktop add https://github.com/wwyking123/VibeGuide/releases/latest/download/vibeguide-dsh-bundle.tgz
+```
+
+这样装不需要任何设置；侧栏记录仍保存在 `~/.dsh/vibeguide-p0-state/`，和一键安装共用。
+
+### 一键安装命令
 
 需要 Mac 和 `/Applications/DeepSeek Harness.app`，并且至少打开过一次。打开“终端”，粘贴这一行，回车：
 

@@ -36,6 +36,25 @@ test('the plugin location is recorded as a file URL, which the Harness can also 
   } finally { await rm(join(directory, '..'), { recursive: true, force: true }); }
 });
 
+test('installed as a bundle the records default to the folder the one-line installer has always used', async () => {
+  const { defaultStorageRoot } = await import('../dist/guide/plugin.js');
+  assert.equal(defaultStorageRoot({}, '/Users/li'), join('/Users/li', '.dsh', 'vibeguide-p0-state'));
+  assert.equal(defaultStorageRoot({ DSH_HOME: '/data/dsh' }, '/Users/li'), join('/data/dsh', 'vibeguide-p0-state'));
+  assert.equal(defaultStorageRoot({ DSH_HOME: '  ' }, '/Users/li'), join('/Users/li', '.dsh', 'vibeguide-p0-state'));
+});
+
+test('the package declares a Harness bundle whose rows name nothing outside the package', () => {
+  const manifest = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+  const patch = readFileSync(new URL(`../${manifest.dsh.bundle.patch}`, import.meta.url), 'utf8');
+  assert.ok(manifest.files.includes('cordis.patch.yml'));
+  assert.equal(manifest.os, undefined, 'an os list would stop the Harness installing it on Windows');
+  const names = [...patch.matchAll(/^\s+name: (\S+)$/gm)].map(match => match[1]);
+  assert.deepEqual(names, ['vibeguide', 'vibeguide/preset']);
+  for (const name of names) assert.ok(manifest.exports[name === 'vibeguide' ? '.' : `./${name.split('/')[1]}`], name);
+  assert.ok(manifest.dsh.client.inject.length > 0);
+  assert.doesNotMatch(patch, /^\s+config:/m);
+});
+
 test('the pre-install self-test passes on this machine and leaves nothing behind', async () => {
   await selfTest();
 });

@@ -1,33 +1,46 @@
 {
   "name": "vibeguide",
-  "version": "0.2.0-alpha.13",
+  "version": "0.2.0-alpha.14",
   "description": "Plain-language development conversations and a guide sidebar inside DeepSeek Harness",
   "private": true,
   "type": "module",
   "engines": {
-    "node": ">=22.18.0"
+    "node": ">=22.18.0",
+    "dsh": ">=0.2.1-rc.2"
   },
-  "os": [
-    "darwin",
-    "linux"
-  ],
   "exports": {
     ".": {
+      "types": "./dist/guide/plugin.d.ts",
+      "import": "./dist/guide/plugin.js"
+    },
+    "./preset": "./dist/guide/host/preset.js",
+    "./communication": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
-    "./guide": { "types": "./dist/guide/plugin.d.ts", "import": "./dist/guide/plugin.js" },
-    "./client": "./dist/client.js"
+    "./client": "./dist/client.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-sidebar-right",
+        "@deepseek-ai/dsh-client-ui-conversation",
+        "@deepseek-ai/dsh-client-ui-slots",
+        "@deepseek-ai/dsh-connection"
+      ]
+    }
   },
   "files": [
     "dist",
-    "src",
     "prompts",
-    "scripts",
-    "evals",
-    "docs",
-    "tests",
-    "tsconfig.json",
+    "cordis.patch.yml",
     "README.md"
   ],
   "scripts": {
@@ -38,6 +51,9 @@
     "dev:guide": "npm run build && node scripts/smoke-guide-desktop.mjs --serve",
     "install:desktop": "npm run build && node scripts/install-desktop.mjs --home \"$HOME/.dsh\" --upgrade",
     "prepack": "npm run build"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.1"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "4.0.5",

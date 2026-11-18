@@ -1,17 +1,17 @@
 # VibeGuide v2.2 开发状态
 
-更新：2026-11-17，版本 `0.2.0-alpha.13`。本文件描述实际代码和已有的验证，不描述目标；[产品设计 v2.2](VIBEGUIDE_PRODUCT_V2_2.md) 和 [技术设计 v2.2](VIBEGUIDE_TECHNICAL_DESIGN_V2_2.md) 仍描述最终目标，与后来的决定冲突时以 [reviews/](reviews/) 里的记录为准。
+更新：2026-11-17，版本 `0.2.0-alpha.14`。本文件描述实际代码和已有的验证，不描述目标；[产品设计 v2.2](VIBEGUIDE_PRODUCT_V2_2.md) 和 [技术设计 v2.2](VIBEGUIDE_TECHNICAL_DESIGN_V2_2.md) 仍描述最终目标，与后来的决定冲突时以 [reviews/](reviews/) 里的记录为准。
 
 alpha.7 及之前各批的交付和验证记录原样保留在文末“历史记录”里。那部分描述的试用步骤、范围核对、“了解过的”页、结构关系图等已经删除或改掉，不代表现在的行为。
 
 ## 现在的状态
 
-- 单元测试 **119 项全部通过**（2026-11-17，`npm test`）。
+- 单元测试 **121 项全部通过**（2026-11-17，`npm test`）。
 - `npm run smoke:guide` 在本机现在的 Harness `0.2.2-rc.3` 上**通过**（2026-11-17）。alpha.11 在这个版本上是失败的，alpha.12 改掉了原因，见“跟随 Harness 更新”。
 - Windows：alpha.12 在一台真实的 Windows 电脑上装完后没有出现 VibeGuide 模式（2026-11-17，所有者报告）。alpha.13 修了查到的原因，修完后还没有在 Windows 上重新试过。
 - 真实模型评测只在 2026-11-03 做过一次，之后新增的划词提问不在其中。
 - 还没有做过真人试用。
-- alpha.12 和 alpha.13 都在 2026-11-17 发布到 `release` 分支（一键安装的来源）。本机日常使用的 Harness `0.2.2-rc.3` 装的是 alpha.12，所有者确认正常。
+- alpha.12、alpha.13、alpha.14 都在 2026-11-17 发布到 `release` 分支（一键安装的来源）。本机日常使用的 Harness `0.2.2-rc.3` 装的是 alpha.12，所有者确认正常。组合包用的 GitHub Release 和插件市场投稿还没有做。
 
 ## 当前能力
 
@@ -60,6 +60,9 @@ alpha.11 及之前有两处会让插件在 Harness 更新后失效，alpha.12 �
 
 ## 安装与发布
 
+- **Harness 组合包**（alpha.14 起）：`package.json` 声明 `dsh.bundle`，仓库根目录的 `cordis.patch.yml` 只有两行声明（侧栏后台、模式注册），不带任何设置。Harness 用自己的包管理器把它装进 profile 的 `node_modules`，更新也由 Harness 的插件页负责。两个后台插件不再需要安装脚本告诉它们 Harness 在哪、记录存在哪：装在 profile 里的代码可以直接解析到 Harness 自己的包；记录默认放在 `$DSH_HOME/vibeguide-p0-state/`（没有设置 `DSH_HOME` 时是 `~/.dsh/`），和一键安装用的是同一个位置。`sh scripts/release.sh` 会顺带生成 `artifacts/vibeguide-dsh-bundle.tgz`，需要手动挂到 GitHub Release 上。投稿文件在 [market/](market/)。
+- **两种装法不能并存。** 一键安装器发现 profile 里已有 `vibeguide` 组合包时会拒绝安装；反过来（先一键安装、再从插件页装）没有拦截，会出现重复声明。
+
 - macOS：[install.sh](../install.sh) 下载预先构建的包，用 Harness 自带的运行环境执行安装器，不需要 Node 或 git；GitHub 下载不动时换 jsDelivr 镜像。
 - Windows：[install.ps1](../install.ps1) 有只读的环境检查模式（`VIBEGUIDE_CHECK=1`）。脚本是对照 Harness 源码写的。实际运行情况见“已知问题”第 2 条。
 - 插件位置在 Harness 设置里记成 `file://` 地址而不是普通路径（alpha.13 起）。Harness 把这个值当网址解析，`C:\...` 这样的 Windows 路径会被读成协议为 `c:` 的网址而加载失败。
@@ -83,7 +86,8 @@ alpha.11 及之前有两处会让插件在 Harness 更新后失效，alpha.12 �
 - `src/guide/work.ts`、`requirements.ts`、`outcomes.ts`、`trouble.ts`：要求状态、历史约定、改动与检查的关联、排障材料。
 - `src/guide/support.ts`、`glossary.ts`、`quote.ts`：偏好与用量、本地词条、划词引用的格式。
 - `src/client/index.tsx`：侧栏界面主体；`project-panels.tsx`、`work-panels.tsx`、`support-panel.tsx`、`analysis-card.tsx` 是各页面和卡片；`selection-ask.tsx` 是主对话里的划词按钮；`outbox.ts` 保存发送前的草稿和稳定标识；`rpc.ts` 把连接错误换成中文说明。
-- `scripts/desktop.mjs`、`install-desktop.mjs`、`selftest.mjs`：安装器与安装前自检。
+- `cordis.patch.yml`、`package.json` 的 `dsh` 字段：Harness 组合包声明。
+- `scripts/desktop.mjs`、`install-desktop.mjs`、`selftest.mjs`：一键安装器与安装前自检。
 - `scripts/smoke-guide-desktop.mjs`：在隔离的真实 Harness 里用固定回答走完整流程。
 - `scripts/eval-sidebar.mjs`、`evals/sidebar/cases.json`：真实模型评测。
 
@@ -91,7 +95,8 @@ alpha.11 及之前有两处会让插件在 Harness 更新后失效，alpha.12 �
 
 | 时间 | 内容 | 结果 |
 |---|---|---|
-| 2026-11-17 | `npm test`，macOS，Node 24.15.0 | 119 项通过。数量比 alpha.7 的 144 项少，是因为 alpha.8 删除旧版“项目续接”和六项开发能力时一并删了它们的测试。 |
+| 2026-11-17 | `npm test`，macOS，Node 24.15.0 | 121 项通过。数量比 alpha.7 的 144 项少，是因为 alpha.8 删除旧版“项目续接”和六项开发能力时一并删了它们的测试。 |
+| 2026-11-17 | alpha.14 按组合包安装，本机 Harness `0.2.2-rc.3` | `smoke-guide-desktop.mjs --bundle` 通过：把打好的包放进隔离 profile 的 `node_modules` 并列入组合包清单，不带任何设置，完整流程与一键安装相同。另用 Harness 自带的 `dsh plugin --profile web add <安装包>` 在隔离的 `DSH_HOME` 里真装了一次：依赖和组合包清单都自动写入，Harness 读取 profile 时没有跳过它。没有做的：在桌面应用的插件页里点击安装；从 GitHub Release 地址安装（Release 还没建）；Windows。 |
 | 2026-11-17 | `npm run smoke:guide`，alpha.12，本机 Harness `0.2.2-rc.3` | 通过：安装与升级、模式挂载、工具与标准模式一致、讲解与缓存、发送与去重、进展与检查、要求确认、排障、设置与次数上限、卸载与重载。“程序内嵌调用里的检查失败”一项跳过，因为 0.2.2 把这种调用方式挪到了另一个模式里，VibeGuide 模式不包含它。 |
 | 2026-11-17 | `npm run smoke:guide`，alpha.11，本机 Harness `0.2.2-rc.3` | 失败：挂载 VibeGuide 模式时报 `agent-preset/invalid`。原因见“跟随 Harness 更新”。 |
 | 2026-11-12 | Windows 支持（alpha.11） | 单元测试覆盖路径拆分和应用目录结构；当时没有在 Windows 上运行过。 |

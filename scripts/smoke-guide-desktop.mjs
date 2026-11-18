@@ -7,7 +7,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
 import { DEFAULT_APP, desktopHost, prepareDesktopPlugin, sourceRoot } from './desktop.mjs';
 
-const { values } = parseArgs({ options: { installed: { type: 'string' }, serve: { type: 'boolean' } } });
+const { values } = parseArgs({ options: { installed: { type: 'string' }, serve: { type: 'boolean' }, bundle: { type: 'boolean' } } });
 const installedDirectory = values.installed ? resolve(values.installed) : undefined;
 if (!process.versions.electron) {
   const result = spawnSync(join(DEFAULT_APP, 'Contents', 'MacOS', 'DeepSeek Harness'), [
@@ -44,7 +44,21 @@ if (!process.versions.electron) {
     ];
     const patchPath = join(profileDirectory, 'cordis.patch.yml');
     let pluginDirectory;
-    if (installedDirectory) {
+    if (values.bundle) {
+      // Installed the way `dsh plugin add` leaves it: the packed package under the profile's
+      // node_modules, named in the profile's bundle list, and nothing in the profile patch.
+      const packed = spawnSync('npm', ['pack', '--ignore-scripts', '--pack-destination', temporary], { cwd: sourceRoot, encoding: 'utf8' });
+      assert.equal(packed.status, 0, packed.stderr);
+      const tarball = join(temporary, packed.stdout.trim().split('\n').at(-1));
+      pluginDirectory = join(profileDirectory, 'node_modules', 'vibeguide');
+      await mkdir(pluginDirectory, { recursive: true });
+      const unpacked = spawnSync('tar', ['-xzf', tarball, '-C', pluginDirectory, '--strip-components', '1'], { encoding: 'utf8' });
+      assert.equal(unpacked.status, 0, unpacked.stderr);
+      await writeFile(join(profileDirectory, 'package.json'), JSON.stringify({ name: 'vibeguide-guide-smoke', private: true,
+        dependencies: { vibeguide: `file:${tarball}` },
+        dsh: { profile: { bundles: ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', 'vibeguide'] } } }));
+      await writeFile(patchPath, host.dump(originalRows));
+    } else if (installedDirectory) {
       // Cordis persists fiber.dispose() as disabled in the owning include. Never
       // give the smoke test's Loader ownership of a daily installation's file.
       installedPresetBefore = await readFile(join(installedDirectory, 'preset.cordis.yml'), 'utf8');
@@ -90,15 +104,24 @@ if (!process.versions.electron) {
     }
     const manifest = JSON.parse(await readFile(join(pluginDirectory, 'package.json'), 'utf8'));
     assert.equal(manifest.dsh.client.immediately, true);
-    assert.equal(manifest.exports['.'], './dist/guide/plugin.js');
     assert.ok((await readFile(join(pluginDirectory, 'dist', 'client.js'), 'utf8')).includes('__ModuleLoader__'));
-    const declaration = host.parse(await readFile(join(pluginDirectory, 'preset.cordis.yml'), 'utf8'));
-    assert.equal(declaration.filter(row => row.id === 'vibeguide-guide').length, 1);
-    assert.equal(declaration.filter(row => row.id === 'vibeguide-preset').length, 1);
-    assert.deepEqual(declaration.map(row => row.id), ['vibeguide-guide', 'vibeguide-preset'], 'no copy of the Harness standard mode may be installed');
+    let declaration;
+    if (values.bundle) {
+      assert.equal(manifest.exports['.'].import, './dist/guide/plugin.js');
+      const patch = await readFile(join(pluginDirectory, manifest.dsh.bundle.patch), 'utf8');
+      declaration = host.parse(patch).flatMap(row => row.insert ?? []);
+      assert.deepEqual(declaration.map(row => [row.id, row.config]), [['vibeguide-guide', undefined], ['vibeguide-preset', undefined]],
+        'a bundle carries no settings: nothing about this computer or this Harness version');
+      assert.doesNotMatch(patch, /file:|[A-Za-z]:\\|\/Users\/|\/Applications\//);
+    } else {
+      assert.equal(manifest.exports['.'], './dist/guide/plugin.js');
+      declaration = host.parse(await readFile(join(pluginDirectory, 'preset.cordis.yml'), 'utf8'));
+      assert.deepEqual(declaration.map(row => row.id), ['vibeguide-guide', 'vibeguide-preset'], 'no copy of the Harness standard mode may be installed');
+    }
     const { loadProfileDirectory, loadLayeredEnv } = await host.load('@deepseek-ai/dsh-app-boot');
     const { runProfile } = await host.load('@deepseek-ai/dsh/profile-boot');
     const profile = loadProfileDirectory('vibeguide-guide-smoke', profileDirectory, host.anchor);
+    assert.deepEqual(profile.skippedBundles, [], 'the Harness must accept every bundle in the profile');
     const app = await runProfile({ environment: loadLayeredEnv('vibeguide-guide-smoke'), profile: 'desktop',
       resolvedProfile: { profile, installAnchor: host.anchor }, patchFiles: [], args: ['--no-open', '--host', '127.0.0.1', '--port', '0'] });
     root = app.ctx;
@@ -527,7 +550,7 @@ if (!process.versions.electron) {
     console.log(JSON.stringify({ nativeTroubleReceipts: true, onDemandTroubleChoices: true, localConceptNoModel: true, preferenceSaved: true, budgetBlocksBeforeProvider: true, projectUsageReported: true, structureHistoryNoModel: true, sidebarSettingsMainHistoryUnchanged: true }));
     const savedAnswers = (await invoke('getSnapshot', { sessionId: deliverySessionId })).explanations;
     assert.ok(savedAnswers.some(value => value.id === explainedChoice.id), 'requested explanations are persisted');
-    console.log(JSON.stringify({ hostVersion: host.version, installation: installedDirectory ? 'installed-copy' : 'cli-upgrade', hostMounted: true, gateway: true,
+    console.log(JSON.stringify({ hostVersion: host.version, installation: values.bundle ? 'bundle' : installedDirectory ? 'installed-copy' : 'cli-upgrade', hostMounted: true, gateway: true,
       staticPromptOnly: true, noVibeGuideTools: true, standardIsolated: true, realProviderCalled: false,
       independentExplanation: true, sameBasisCache: true, mainHistoryUnchanged: true,
       pendingChoiceReadable: true, answeredChoiceRemoved: true, busyQueue: true,
@@ -553,7 +576,7 @@ if (!process.versions.electron) {
       basis: finalSnapshot.basis, question: 'fixture-unload-cancel' });
     const rejectedOnUnload = assert.rejects(pendingExplanation);
     await cancelledCallEntered;
-    const guideEntry = [...root.loader.entries()].find(entry => entry.options.name.endsWith('/dist/guide/plugin.js'));
+    const guideEntry = [...root.loader.entries()].find(entry => entry.options.id === 'vibeguide-guide');
     assert.ok(guideEntry?.fiber); assert.notEqual(guideEntry.fiber, root.fiber);
     await guideEntry.fiber.dispose();
     await rejectedOnUnload;
