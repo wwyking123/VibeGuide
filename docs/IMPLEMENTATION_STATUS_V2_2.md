@@ -11,7 +11,8 @@ alpha.7 及之前各批的交付和验证记录原样保留在文末“历史记
 - Windows：alpha.12 在一台真实的 Windows 电脑上装完后没有出现 VibeGuide 模式（2026-11-17，所有者报告）。alpha.13 修了查到的原因，修完后还没有在 Windows 上重新试过。
 - 真实模型评测只在 2026-11-03 做过一次，之后新增的划词提问不在其中。
 - 还没有做过真人试用。
-- alpha.12、alpha.13、alpha.14 都在 2026-11-17 发布到 `release` 分支（一键安装的来源）。本机日常使用的 Harness `0.2.2-rc.3` 装的是 alpha.12，所有者确认正常。组合包用的 GitHub Release 和插件市场投稿还没有做。
+- alpha.12、alpha.13、alpha.14 都在 2026-11-17 发布到 `release` 分支（一键安装的来源）。本机日常使用的 Harness `0.2.2-rc.3` 装的是 alpha.12，所有者确认正常。
+- 组合包：GitHub Release `v0.2.0-alpha.14` 已建（2026-11-17），用 `dsh plugin --profile web add <Release 地址>` 在隔离的 `DSH_HOME` 里安装成功，Harness 读取 profile 时没有跳过它。仓库已加 `dsh-plugin` 话题标签，已向 awesome-dsh-plugin 提交收录申请，结果待对方评审。
 
 ## 当前能力
 

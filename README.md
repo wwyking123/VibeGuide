@@ -24,13 +24,15 @@ DeepSeek Harness 的插件，面向不懂技术、用 AI 做产品的人：
 
 有两种装法，**只用其中一种**。两种都装会重复声明同一个模式，哪个都加载不好。
 
-### 通过 Harness 的插件页（准备中）
+### 通过 Harness 安装
 
-0.2.0-alpha.14 起，VibeGuide 是一个标准的 Harness 组合包，可以由 Harness 自己安装和更新，Mac 和 Windows 相同，也不需要能连上 GitHub 的脚本。安装包会挂在 GitHub Release 上，并提交到 [awesome-dsh-plugin](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin) 供插件市场收录；这两步完成之前，这种装法还用不了。命令行等价于：
+0.2.0-alpha.14 起，VibeGuide 是一个标准的 Harness 组合包，可以由 Harness 自己安装和更新，Mac 和 Windows 相同，也不需要能连上 GitHub 的脚本。安装包挂在 [GitHub Release](https://github.com/wwyking123/VibeGuide/releases/latest) 上，用 Harness 自带的命令安装：
 
 ```sh
 dsh plugin --profile desktop add https://github.com/wwyking123/VibeGuide/releases/latest/download/vibeguide-dsh-bundle.tgz
 ```
+
+在 Mac 上验证过这条命令；在桌面应用的插件页里点击安装、以及在 Windows 上安装，还没有验证。已提交到 [awesome-dsh-plugin](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin) 申请插件市场收录，是否收录由对方维护者评审。
 
 这样装不需要任何设置；侧栏记录仍保存在 `~/.dsh/vibeguide-p0-state/`，和一键安装共用。
 
