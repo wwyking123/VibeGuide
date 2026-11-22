@@ -32,7 +32,7 @@ DeepSeek Harness 的插件，面向不懂技术、用 AI 做产品的人：
 dsh plugin --profile desktop add https://github.com/wwyking123/VibeGuide/releases/latest/download/vibeguide-dsh-bundle.tgz
 ```
 
-在 Mac 上验证过这条命令；在桌面应用的插件页里点击安装、以及在 Windows 上安装，还没有验证。已提交到 [awesome-dsh-plugin](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin) 申请插件市场收录，是否收录由对方维护者评审。
+在 Mac 上验证过这条命令；在桌面应用的插件页里点击安装、以及在 Windows 上安装，还没有验证。已被 [awesome-dsh-plugin](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin) 收录（2026-11-18），可以在使用这份列表的插件市场里找到。
 
 这样装不需要任何设置；侧栏记录仍保存在 `~/.dsh/vibeguide-p0-state/`，和一键安装共用。
 
